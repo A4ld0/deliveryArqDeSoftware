@@ -1,0 +1,68 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@500;600;700;800&display=swap');
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  min-height: 100vh;
+  font-size: 16px;
+  line-height: 1.5;
+  font-family: 'Manrope', 'Segoe UI', sans-serif;
+}
+
+h1,
+h2,
+h3 {
+  font-family: 'Sora', 'Manrope', sans-serif;
+  letter-spacing: 0.01em;
+  line-height: 1.25;
+}
+
+h2 {
+  font-size: clamp(1.35rem, 1.6vw, 1.8rem);
+  margin: 0;
+}
+
+h3 {
+  font-size: clamp(1.05rem, 1.05vw, 1.24rem);
+  margin: 0;
+}
+
+.page {
+  box-shadow: 0 16px 30px rgb(173 89 33 / 9%);
+}
+
+.card {
+  box-shadow: 0 10px 20px rgb(154 85 33 / 6%);
+}
+
+button {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+button:hover {
+  filter: saturate(1.06);
+}
+
+input:focus,
+select:focus,
+button:focus-visible {
+  outline: 2px solid rgb(255 107 53 / 38%);
+  outline-offset: 1px;
+}
+
+button,
+input,
+select,
+textarea {
+  min-height: 48px;
+}

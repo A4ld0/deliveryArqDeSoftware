@@ -1,0 +1,31 @@
+<svg width="960" height="560" viewBox="0 0 960 560" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="95" y1="30" x2="822" y2="522" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFE5D5"/>
+      <stop offset="1" stop-color="#FFD0B5"/>
+    </linearGradient>
+    <linearGradient id="bike" x1="468" y1="272" x2="702" y2="418" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FF7D4A"/>
+      <stop offset="1" stop-color="#E24A17"/>
+    </linearGradient>
+  </defs>
+  <rect x="26" y="34" width="908" height="492" rx="44" fill="url(#bg)"/>
+  <circle cx="744" cy="146" r="58" fill="#FFF4EA"/>
+  <circle cx="224" cy="116" r="38" fill="#FFF4EA"/>
+  <rect x="96" y="350" width="768" height="26" rx="13" fill="#FFC6A5"/>
+  <circle cx="332" cy="398" r="56" fill="#FFEDE0"/>
+  <circle cx="332" cy="398" r="38" fill="#FFFFFF"/>
+  <circle cx="652" cy="398" r="56" fill="#FFEDE0"/>
+  <circle cx="652" cy="398" r="38" fill="#FFFFFF"/>
+  <path d="M364 286H470L514 332H620L652 398H604L566 332H496L468 286H412L364 398H276L332 286H364Z" fill="url(#bike)"/>
+  <path d="M470 250H574C589 250 602 263 602 278V308H502L470 250Z" fill="#2F1E14"/>
+  <rect x="530" y="214" width="152" height="84" rx="20" fill="#FF5E2D"/>
+  <rect x="548" y="236" width="40" height="30" rx="8" fill="#FFF2E8"/>
+  <rect x="598" y="236" width="66" height="30" rx="8" fill="#FFF2E8"/>
+  <rect x="270" y="194" width="146" height="114" rx="24" fill="#FFFFFF"/>
+  <rect x="292" y="218" width="100" height="14" rx="7" fill="#FFD9C3"/>
+  <rect x="292" y="244" width="72" height="14" rx="7" fill="#FFD9C3"/>
+  <rect x="292" y="270" width="88" height="14" rx="7" fill="#FFD9C3"/>
+  <path d="M356 156C356 140 369 127 385 127H395C411 127 424 140 424 156V172H356V156Z" fill="#2F1E14"/>
+  <circle cx="390" cy="116" r="30" fill="#FFB08A"/>
+</svg>
