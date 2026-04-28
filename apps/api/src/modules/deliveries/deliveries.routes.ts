@@ -7,10 +7,19 @@ import { HttpError } from "../../lib/http-error.js";
 import { withTransaction } from "../../lib/transaction.js";
 import { requireAuth } from "../../middlewares/auth.js";
 import { requireRole } from "../../middlewares/require-role.js";
-import { publishOrderStatusChanged } from "../../realtime/order-events.js";
+import {
+  publishDeliveryLocationChanged,
+  publishOrderStatusChanged
+} from "../../realtime/order-events.js";
 
 const UpdateDeliveryStatusSchema = z.object({
   status: z.enum(["IN_TRANSIT", "DELIVERED"])
+});
+
+const UpdateDeliveryLocationSchema = z.object({
+  latitude: z.coerce.number().min(-90).max(90),
+  longitude: z.coerce.number().min(-180).max(180),
+  accuracy: z.coerce.number().min(0).max(100000).nullable().optional()
 });
 
 export const deliveriesRouter = Router();
@@ -25,6 +34,24 @@ async function safePublishOrderStatusChanged(
     console.error("Failed to publish delivery status change.", {
       orderId,
       status,
+      error
+    });
+  }
+}
+
+async function safePublishDeliveryLocationChanged(
+  orderId: number,
+  location: {
+    latitude: number;
+    longitude: number;
+    accuracy: number | null;
+  }
+): Promise<void> {
+  try {
+    await publishDeliveryLocationChanged(orderId, location);
+  } catch (error) {
+    console.error("Failed to publish delivery location change.", {
+      orderId,
       error
     });
   }
@@ -131,6 +158,77 @@ deliveriesRouter.post(
 
     await safePublishOrderStatusChanged(orderId, "ASSIGNED");
     response.status(201).json({ delivery: result });
+  })
+);
+
+deliveriesRouter.post(
+  "/:orderId/location",
+  requireAuth,
+  requireRole(["driver"]),
+  asyncHandler(async (request, response) => {
+    const orderId = Number.parseInt(request.params.orderId, 10);
+    if (Number.isNaN(orderId)) throw new HttpError(400, "orderId must be numeric.");
+
+    const parsed = UpdateDeliveryLocationSchema.safeParse(request.body);
+    if (!parsed.success) {
+      throw new HttpError(
+        400,
+        "Invalid delivery location payload.",
+        parsed.error.flatten()
+      );
+    }
+
+    const driverId = request.currentUser!.authUserId;
+    const location = {
+      latitude: parsed.data.latitude,
+      longitude: parsed.data.longitude,
+      accuracy: parsed.data.accuracy ?? null
+    };
+
+    const rows = await query<{
+      order_id: number;
+      driver_id: string;
+      status: string;
+      driver_latitude: number;
+      driver_longitude: number;
+      driver_accuracy: number | null;
+      location_updated_at: string;
+    }>(
+      `
+      UPDATE deliveries
+      SET
+        driver_latitude = $1,
+        driver_longitude = $2,
+        driver_accuracy = $3,
+        location_updated_at = now()
+      WHERE order_id = $4
+        AND driver_id = $5
+        AND status IN ('ASSIGNED', 'IN_TRANSIT')
+      RETURNING
+        order_id,
+        driver_id,
+        status,
+        driver_latitude::float8 AS driver_latitude,
+        driver_longitude::float8 AS driver_longitude,
+        driver_accuracy::float8 AS driver_accuracy,
+        location_updated_at
+      `,
+      [
+        location.latitude,
+        location.longitude,
+        location.accuracy,
+        orderId,
+        driverId
+      ]
+    );
+
+    const delivery = rows[0];
+    if (!delivery) {
+      throw new HttpError(404, "Active delivery assignment not found.");
+    }
+
+    await safePublishDeliveryLocationChanged(orderId, location);
+    response.json({ delivery });
   })
 );
 

@@ -43,11 +43,23 @@ export interface OrderSummary {
   total: string;
   created_at: string;
   updated_at: string;
+  driver_latitude: number | null;
+  driver_longitude: number | null;
+  driver_accuracy: number | null;
+  location_updated_at: string | null;
 }
 
 export interface OrderStatusEvent {
   orderId: number;
   status: string;
+  at: string;
+}
+
+export interface OrderLocationEvent {
+  orderId: number;
+  latitude: number;
+  longitude: number;
+  accuracy: number | null;
   at: string;
 }
 

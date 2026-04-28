@@ -188,6 +188,19 @@ export class ApiService {
     );
   }
 
+  async updateDeliveryLocation(
+    orderId: number,
+    payload: {
+      latitude: number;
+      longitude: number;
+      accuracy?: number | null;
+    }
+  ): Promise<void> {
+    await firstValueFrom(
+      this.http.post(`${environment.apiBaseUrl}/deliveries/${orderId}/location`, payload)
+    );
+  }
+
   async getIncidents(): Promise<IncidentItem[]> {
     const response = await firstValueFrom(
       this.http.get<{ incidents: IncidentItem[] }>(`${environment.apiBaseUrl}/incidents`)

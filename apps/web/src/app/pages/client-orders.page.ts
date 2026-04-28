@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnDestroy } from '@angular/core';
 import { ApiService } from '../core/api.service';
-import type { OrderStatusEvent, OrderSummary } from '../core/models';
+import type { OrderLocationEvent, OrderStatusEvent, OrderSummary } from '../core/models';
 import { OrderEventsService } from '../core/order-events.service';
 
 @Component({
@@ -28,6 +28,22 @@ import { OrderEventsService } from '../core/order-events.service';
                 <strong>#{{ order.id }} - {{ order.status }}</strong>
                 <span>Total: {{ order.total }}</span>
               </div>
+              @if (hasDriverLocation(order)) {
+                <div class="location-box">
+                  <div>
+                    <strong>Ubicacion del repartidor</strong>
+                    <span>Actualizado {{ locationAge(order.location_updated_at) }}</span>
+                    @if (order.driver_accuracy !== null) {
+                      <span>Precision aprox. {{ order.driver_accuracy }} m</span>
+                    }
+                  </div>
+                  <a class="map-link" [href]="mapUrl(order)" target="_blank" rel="noreferrer">
+                    Ver mapa
+                  </a>
+                </div>
+              } @else if (isInTransit(order.status)) {
+                <p class="location-wait">Esperando ubicacion del repartidor.</p>
+              }
               @if (canCancel(order.status)) {
                 <button
                   type="button"
@@ -77,6 +93,30 @@ import { OrderEventsService } from '../core/order-events.service';
       gap: var(--space-2);
     }
     .row { display: flex; justify-content: space-between; gap: 0.5rem; align-items: center; }
+    .location-box {
+      border: 1px solid rgba(255, 91, 45, 0.24);
+      border-radius: var(--radius-sm);
+      background: linear-gradient(135deg, rgba(255, 91, 45, 0.12), rgba(255, 255, 255, 0.78));
+      padding: var(--space-3);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: var(--space-3);
+      flex-wrap: wrap;
+    }
+    .location-box div { display: grid; gap: 0.2rem; }
+    .location-box span,
+    .location-wait { color: var(--muted); font-size: 0.92rem; }
+    .location-wait { margin: 0; }
+    .map-link {
+      border-radius: 999px;
+      background: var(--primary);
+      color: #fff;
+      font-weight: 700;
+      padding: 0.58rem 0.92rem;
+      text-decoration: none;
+      white-space: nowrap;
+    }
     button {
       border: 0;
       border-radius: 999px;
@@ -116,6 +156,37 @@ export class ClientOrdersPageComponent implements OnDestroy {
 
   protected canCancel(status: string): boolean {
     return ['PENDING', 'ACCEPTED'].includes(status);
+  }
+
+  protected hasDriverLocation(order: OrderSummary): boolean {
+    return (
+      typeof order.driver_latitude === 'number' &&
+      typeof order.driver_longitude === 'number'
+    );
+  }
+
+  protected isInTransit(status: string): boolean {
+    return status === 'IN_TRANSIT';
+  }
+
+  protected mapUrl(order: OrderSummary): string {
+    return `https://www.google.com/maps?q=${order.driver_latitude},${order.driver_longitude}`;
+  }
+
+  protected locationAge(value: string | null): string {
+    if (!value) return 'sin hora registrada';
+
+    const timestamp = new Date(value).getTime();
+    if (Number.isNaN(timestamp)) return 'recientemente';
+
+    const seconds = Math.max(0, Math.round((Date.now() - timestamp) / 1000));
+    if (seconds < 60) return `hace ${seconds}s`;
+
+    const minutes = Math.round(seconds / 60);
+    if (minutes < 60) return `hace ${minutes} min`;
+
+    const hours = Math.round(minutes / 60);
+    return `hace ${hours} h`;
   }
 
   protected async loadOrders(): Promise<void> {
@@ -161,6 +232,18 @@ export class ClientOrdersPageComponent implements OnDestroy {
         } else {
           void this.loadOrders();
         }
+      },
+      onOrderLocationChanged: (event: OrderLocationEvent) => {
+        const found = this.orders.find((order) => order.id === event.orderId);
+        if (!found) {
+          void this.loadOrders();
+          return;
+        }
+
+        found.driver_latitude = event.latitude;
+        found.driver_longitude = event.longitude;
+        found.driver_accuracy = event.accuracy;
+        found.location_updated_at = event.at;
       }
     });
   }

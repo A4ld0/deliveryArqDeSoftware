@@ -287,8 +287,20 @@ ordersRouter.get(
     if (!user) throw new HttpError(401, "Authentication required.");
 
     let sql = `
-      SELECT o.id, o.status, o.restaurant_id, o.customer_id, o.total::text AS total, o.created_at, o.updated_at
+      SELECT
+        o.id,
+        o.status,
+        o.restaurant_id,
+        o.customer_id,
+        o.total::text AS total,
+        o.created_at,
+        o.updated_at,
+        d.driver_latitude::float8 AS driver_latitude,
+        d.driver_longitude::float8 AS driver_longitude,
+        d.driver_accuracy::float8 AS driver_accuracy,
+        d.location_updated_at
       FROM orders o
+      LEFT JOIN deliveries d ON d.order_id = o.id
     `;
     const params: unknown[] = [];
 
@@ -304,7 +316,6 @@ ordersRouter.get(
       params.push(user.authUserId);
     } else if (user.role === "driver") {
       sql += `
-        JOIN deliveries d ON d.order_id = o.id
         WHERE d.driver_id = $1
         ORDER BY o.created_at DESC LIMIT 100
       `;

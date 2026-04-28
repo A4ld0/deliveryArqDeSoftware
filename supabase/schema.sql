@@ -93,6 +93,10 @@ CREATE TABLE IF NOT EXISTS deliveries (
   driver_id UUID NOT NULL REFERENCES users(auth_user_id),
   status order_status NOT NULL CHECK (status IN ('ASSIGNED', 'IN_TRANSIT', 'DELIVERED')),
   estimated_location VARCHAR(150),
+  driver_latitude NUMERIC(9, 6),
+  driver_longitude NUMERIC(9, 6),
+  driver_accuracy NUMERIC(8, 2),
+  location_updated_at TIMESTAMPTZ,
   assigned_at TIMESTAMPTZ,
   picked_up_at TIMESTAMPTZ,
   delivered_at TIMESTAMPTZ

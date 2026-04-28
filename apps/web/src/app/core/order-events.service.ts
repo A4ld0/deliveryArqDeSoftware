@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { environment } from '../../environments/environment';
-import type { OrderStatusEvent } from './models';
+import type { OrderLocationEvent, OrderStatusEvent } from './models';
 import { SessionService } from './session.service';
 
 @Injectable({ providedIn: 'root' })
@@ -10,6 +10,7 @@ export class OrderEventsService {
   async connect(
     handlers: {
       onOrderStatusChanged: (event: OrderStatusEvent) => void;
+      onOrderLocationChanged?: (event: OrderLocationEvent) => void;
       onError?: () => void;
       onConnected?: () => void;
     }
@@ -35,6 +36,16 @@ export class OrderEventsService {
       }
     });
 
+    source.addEventListener('order.location_changed', (raw) => {
+      if (!(raw instanceof MessageEvent)) return;
+      try {
+        const payload = JSON.parse(raw.data) as OrderLocationEvent;
+        handlers.onOrderLocationChanged?.(payload);
+      } catch {
+        // Ignore malformed payloads.
+      }
+    });
+
     source.onerror = () => {
       handlers.onError?.();
     };
@@ -42,4 +53,3 @@ export class OrderEventsService {
     return source;
   }
 }
-
