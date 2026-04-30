@@ -4,11 +4,12 @@ import { Component, OnDestroy } from '@angular/core';
 import { ApiService } from '../core/api.service';
 import type { OrderLocationEvent, OrderStatusEvent, OrderSummary } from '../core/models';
 import { OrderEventsService } from '../core/order-events.service';
+import { OrderMapComponent } from '../components/order-map.component';
 
 @Component({
   selector: 'app-client-orders-page',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, OrderMapComponent],
   template: `
     <article class="card">
       <div class="card-title">
@@ -37,9 +38,9 @@ import { OrderEventsService } from '../core/order-events.service';
                       <span>Precision aprox. {{ order.driver_accuracy }} m</span>
                     }
                   </div>
-                  <a class="map-link" [href]="mapUrl(order)" target="_blank" rel="noreferrer">
-                    Ver mapa
-                  </a>
+                  <div style="width: 100%; margin-top: 0.5rem;">
+                    <app-order-map [lat]="order.driver_latitude!" [lng]="order.driver_longitude!"></app-order-map>
+                  </div>
                 </div>
               } @else if (isInTransit(order.status)) {
                 <p class="location-wait">Esperando ubicacion del repartidor.</p>
@@ -167,10 +168,6 @@ export class ClientOrdersPageComponent implements OnDestroy {
 
   protected isInTransit(status: string): boolean {
     return status === 'IN_TRANSIT';
-  }
-
-  protected mapUrl(order: OrderSummary): string {
-    return `https://www.google.com/maps?q=${order.driver_latitude},${order.driver_longitude}`;
   }
 
   protected locationAge(value: string | null): string {
