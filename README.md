@@ -168,3 +168,30 @@ El respaldo completo se encuentra en [`DB_Backup/`](./DB_Backup/):
 - **Multi-rol** — cuatro roles independientes con rutas, guards y vistas propias
 - **State machine** de pedidos — transiciones controladas con validación de rol por estado
 - **Pagos simulados** — flujo completo de pago y reembolso en cancelaciones
+
+---
+
+## Screenshots
+
+### Autenticación
+<img src="docs/screenshots/01-login.png" width="700" alt="Login" />
+<img src="docs/screenshots/02-registro.png" width="700" alt="Registro" />
+
+### Cliente
+<img src="docs/screenshots/03-cliente-home.png" width="700" alt="Home — lista de restaurantes" />
+<img src="docs/screenshots/04-cliente-restaurante.png" width="700" alt="Detalle de restaurante" />
+<img src="docs/screenshots/05-cliente-carrito.png" width="700" alt="Carrito" />
+<img src="docs/screenshots/06-cliente-checkout.png" width="700" alt="Checkout" />
+<img src="docs/screenshots/07-cliente-mis-pedidos.png" width="700" alt="Mis pedidos" />
+<img src="docs/screenshots/08-cliente-perfil.png" width="700" alt="Perfil" />
+
+### Restaurante
+<img src="docs/screenshots/09-restaurante-dashboard.png" width="700" alt="Dashboard restaurante" />
+<img src="docs/screenshots/10-restaurante-pedidos.png" width="700" alt="Gestión de pedidos" />
+<img src="docs/screenshots/11-restaurante-menu.png" width="700" alt="Menú de platillos" />
+<img src="docs/screenshots/12-restaurante-configuracion.png" width="700" alt="Configuración del negocio" />
+
+### Repartidor
+<img src="docs/screenshots/13-repartidor-dashboard.png" width="700" alt="Dashboard repartidor" />
+<img src="docs/screenshots/14-repartidor-historial.png" width="700" alt="Historial de entregas" />
+<img src="docs/screenshots/15-repartidor-perfil.png" width="700" alt="Perfil repartidor" />
