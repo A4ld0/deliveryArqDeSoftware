@@ -224,4 +224,4 @@ Sigue este orden para probar todos los roles de punta a punta:
 
 ---
 
-*E4 Delivery Platform — ITESO 8° Semestre — Arquitectura de Software — 2026*
+*E4 Delivery Platform — Arquitectura de Software — 2026*
