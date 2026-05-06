@@ -1,11 +1,13 @@
 export type UserRole = 'client' | 'driver' | 'restaurant' | 'admin';
 
 export interface ApiUserProfile {
-  authUserId: string;
+  auth_user_id: string;
   email: string;
   fullName: string;
   role: UserRole;
   isActive: boolean;
+  phone?: string | null;
+  address?: string | null;
 }
 
 export interface Restaurant {
@@ -39,8 +41,14 @@ export interface OrderSummary {
   id: number;
   status: string;
   restaurant_id: number;
+  restaurant_name?: string; // Nombre opcional del negocio
+  restaurant_address?: string; // Dirección del negocio
+  delivery_address?: string; // Dirección de entrega
+  driver_name?: string; // Nombre del repartidor
   customer_id: string;
+  customer_name?: string; // Nombre del cliente
   total: string;
+  delivery_fee: string;
   created_at: string;
   updated_at: string;
   driver_latitude: number | null;

@@ -1,8 +1,11 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnDestroy } from '@angular/core';
+import { Component, OnDestroy, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { ApiService } from '../core/api.service';
+import { ClientOrderStateService } from '../core/client-order-state.service';
+import { ProfileService } from '../core/profile.service';
 import type {
   IncidentItem,
   OrderStatusEvent,
@@ -12,13 +15,6 @@ import type {
 } from '../core/models';
 import { OrderEventsService } from '../core/order-events.service';
 
-interface CartLine {
-  productId: number;
-  name: string;
-  price: number;
-  quantity: number;
-}
-
 type ViewMode = 'restaurants' | 'menu' | 'checkout';
 
 @Component({
@@ -26,368 +22,325 @@ type ViewMode = 'restaurants' | 'menu' | 'checkout';
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <section class="page">
-      <h2>Modulo Cliente</h2>
-      <p>Flujo simple: elige restaurante, agrega productos y confirma tu pedido.</p>
-
-      <article class="card">
-        <div class="card-title">
-          <h3>Paso 1: Elige restaurante</h3>
-          <button type="button" class="ghost" (click)="loadRestaurants()" [disabled]="loadingRestaurants">
-            {{ loadingRestaurants ? 'Cargando...' : 'Recargar' }}
-          </button>
+    <section class="dashboard">
+      <header class="dashboard__header">
+        <div class="welcome">
+          <h2>¡Hola, {{ (profile()?.fullName ?? '').split(' ')[0] || 'Gourmet' }}! 🍕</h2>
+          <p>¿Qué vamos a pedir hoy?</p>
         </div>
 
-        @if (!restaurants.length) {
-          <p class="muted">No hay restaurantes disponibles.</p>
+        <div class="quick-actions">
+          <!-- Botón de perfil removido aquí, ya está en el header -->
+        </div>
+      </header>
+
+      <!-- STEP 1: RESTAURANTS -->
+      <article class="card main-card">
+        <header class="card-header">
+          <div class="step-badge">1</div>
+          <h3>Elige tu restaurante</h3>
+          <button type="button" class="refresh-btn" (click)="loadRestaurants()" [disabled]="loadingRestaurants">
+             <svg [class.spin]="loadingRestaurants" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          </button>
+        </header>
+
+        @if (loadingRestaurants) {
+          <div class="skeleton-grid">
+            @for (n of [1,2,3,4]; track n) { <div class="skeleton-item"></div> }
+          </div>
+        } @else if (!restaurants.length) {
+          <div class="empty-state">No hay restaurantes disponibles.</div>
         } @else {
           <div class="restaurant-grid">
-            @for (restaurant of restaurants; track restaurant.id) {
+            @for (r of restaurants; track r.id) {
               <button
                 type="button"
-                class="restaurant-card"
-                [class.active]="restaurant.id === selectedRestaurantId"
-                (click)="selectRestaurant(restaurant)"
+                class="r-card"
+                [class.active]="r.id === selectedRestaurantId()"
+                (click)="selectRestaurant(r)"
               >
-                <strong>{{ restaurant.name }}</strong>
-                <span class="meta">{{ restaurant.description || 'Sin descripcion.' }}</span>
-                <span class="meta">{{ restaurant.is_open ? 'Abierto' : 'Cerrado temporalmente' }}</span>
+                <div class="r-card__banner" [style.background]="bannerGradient(r.id)">
+                   <span>{{ r.name.charAt(0) }}</span>
+                </div>
+                <div class="r-card__info">
+                  <strong>{{ r.name }}</strong>
+                  <span class="status" [class.open]="r.is_open">{{ r.is_open ? '● Abierto' : '● Cerrado' }}</span>
+                </div>
               </button>
             }
           </div>
         }
       </article>
 
-      @if (selectedRestaurantId) {
-        <article class="card">
-          <div class="card-title">
-            <h3>{{ viewMode === 'checkout' ? 'Paso 3: Confirma pedido' : 'Paso 2: Menu' }}</h3>
-            <div class="actions">
-              <button type="button" class="ghost" (click)="backToRestaurants()">Cambiar restaurante</button>
+      <!-- STEP 2: MENU -->
+      @if (selectedRestaurantId()) {
+        <article class="card main-card anim-slide-up">
+          <header class="card-header">
+            <div class="step-badge">2</div>
+            <h3>{{ viewMode === 'checkout' ? 'Revisa tu pedido' : 'Selecciona tus platillos' }}</h3>
+            <div class="header-actions">
+              <button type="button" class="ghost-btn" (click)="backToRestaurants()">Cambiar restaurante</button>
               @if (viewMode === 'checkout') {
-                <button type="button" class="ghost" (click)="returnToMenu()">Volver al menu</button>
+                <button type="button" class="ghost-btn" (click)="returnToMenu()">Volver al menú</button>
               }
             </div>
-          </div>
+          </header>
 
-          <p class="muted">{{ selectedRestaurantName }}</p>
+          <p class="restaurant-label">📍 {{ selectedRestaurantName() }}</p>
 
           @if (viewMode === 'menu') {
             @if (loadingProducts) {
-              <p class="muted">Cargando menu...</p>
+              <div class="skeleton-list"></div>
             } @else if (!products.length) {
-              <p class="muted">Este restaurante aun no tiene productos disponibles.</p>
+              <div class="empty-state">Este restaurante aún no tiene productos.</div>
             } @else {
-              <div class="catalog">
-                @for (product of products; track product.id) {
-                  <article class="product-card">
-                    <img
-                      class="product-thumb"
-                      [src]="product.image_url || defaultProductImage"
-                      [alt]="product.name"
-                      loading="lazy"
-                    />
-                    <div class="row">
-                      <strong>{{ product.name }}</strong>
-                      <span>\${{ asPrice(product.price) }}</span>
+              <div class="catalog-grid">
+                @for (p of products; track p.id) {
+                  <div class="product-item">
+                    <img [src]="p.image_url || defaultProductImage" [alt]="p.name" />
+                    <div class="product-item__details">
+                      <strong>{{ p.name }}</strong>
+                      <span class="price">\${{ asPrice(p.price) }}</span>
+                      <button type="button" class="add-btn" (click)="addToCart(p)">Agregar</button>
                     </div>
-                    @if (product.description) {
-                      <span class="meta">{{ product.description }}</span>
-                    }
-                    <span class="meta">{{ product.category || 'Sin categoria' }}</span>
-                    <button type="button" (click)="addToCart(product)">Agregar al carrito</button>
-                  </article>
+                  </div>
                 }
               </div>
             }
 
-            <div class="checkout-summary">
-              @if (!cart.length) {
-                <p class="muted">Tu carrito esta vacio.</p>
-              } @else {
-                <div>
-                  <strong>{{ cartItemsCount }} producto(s)</strong>
-                  <p class="muted">Subtotal: \${{ cartSubtotal.toFixed(2) }}</p>
-                </div>
-              }
-              <button type="button" (click)="goToCheckout()" [disabled]="!cart.length">
-                Proceder al pago
-              </button>
+            <div class="floating-summary" [class.visible]="cart().length > 0">
+               <div class="summary-info">
+                 <strong>{{ cartItemsCount() }} items</strong>
+                 <span>Total: \${{ cartSubtotal().toFixed(2) }}</span>
+               </div>
+               <button type="button" class="checkout-btn" (click)="goToCheckout()">Proceder al pago</button>
             </div>
           }
 
           @if (viewMode === 'checkout') {
-            @if (!cart.length) {
-              <p class="muted">Tu carrito esta vacio. Regresa al menu para agregar productos.</p>
-            } @else {
-              <ul class="list">
-                @for (line of cart; track line.productId) {
-                  <li>
-                    <div class="row">
-                      <strong>{{ line.name }}</strong>
-                      <span>\${{ line.price.toFixed(2) }}</span>
+            <div class="checkout-view">
+              <ul class="cart-list">
+                @for (item of cart(); track item.productId) {
+                  <li class="cart-item">
+                    <div class="item-main">
+                      <strong>{{ item.name }}</strong>
+                      <span>\${{ item.price.toFixed(2) }}</span>
                     </div>
-                    <div class="qty">
-                      <button type="button" class="ghost" (click)="changeQty(line.productId, -1)">-</button>
-                      <span>{{ line.quantity }}</span>
-                      <button type="button" class="ghost" (click)="changeQty(line.productId, 1)">+</button>
-                      <button type="button" class="danger" (click)="removeFromCart(line.productId)">Quitar</button>
+                    <div class="item-controls">
+                      <button (click)="changeQty(item.productId, -1)">-</button>
+                      <span>{{ item.quantity }}</span>
+                      <button (click)="changeQty(item.productId, 1)">+</button>
+                      <button class="remove" (click)="removeFromCart(item.productId)">Eliminar</button>
                     </div>
                   </li>
                 }
               </ul>
 
-              <p class="total">Subtotal: <strong>\${{ cartSubtotal.toFixed(2) }}</strong></p>
-
-              <form class="form" (submit)="checkout($event)">
-                <label>
-                  Direccion de entrega
-                  <input
-                    type="text"
-                    name="deliveryAddress"
-                    [(ngModel)]="deliveryAddress"
-                    required
-                    minlength="6"
-                  />
-                </label>
-
-                <label>
-                  Metodo de pago (simulado)
-                  <select name="paymentMethod" [(ngModel)]="paymentMethod">
-                    <option value="SIMULATED_CARD">Tarjeta simulada</option>
-                    <option value="SIMULATED_CASH">Efectivo simulado</option>
-                  </select>
-                </label>
-
-                <div class="actions">
-                  <button type="submit" [disabled]="placingOrder">
-                    {{ placingOrder ? 'Procesando...' : 'Confirmar pedido' }}
-                  </button>
-                  <button type="button" class="ghost" (click)="clearCart()">Vaciar carrito</button>
+              <div class="checkout-footer">
+                <div class="total-row">
+                  <span>Total a pagar:</span>
+                  <strong>\${{ cartSubtotal().toFixed(2) }}</strong>
                 </div>
-              </form>
-            }
+
+                <form class="checkout-form" (submit)="checkout($event)">
+                  <div class="form-group">
+                    <label>Dirección de entrega</label>
+                    <input type="text" [(ngModel)]="deliveryAddress" name="deliveryAddress" placeholder="Ingresa tu dirección real" required />
+                  </div>
+                  <div class="form-group">
+                    <label>Método de Pago</label>
+                    <select [(ngModel)]="paymentMethod" name="paymentMethod">
+                      <option value="SIMULATED_CARD">💳 Tarjeta (Simulado)</option>
+                      <option value="SIMULATED_CASH">💵 Efectivo (Simulado)</option>
+                    </select>
+                  </div>
+                  <div class="form-actions">
+                    <button type="submit" class="btn-primary-auth" [disabled]="placingOrder">
+                      {{ placingOrder ? 'Procesando...' : 'Confirmar Pedido' }}
+                    </button>
+                    <button type="button" class="ghost-btn" (click)="clearCart()">Vaciar Carrito</button>
+                  </div>
+                </form>
+              </div>
+            </div>
           }
         </article>
       }
 
-      <article class="card">
-        <div class="card-title">
-          <h3>Mis pedidos</h3>
-          <button type="button" class="ghost" (click)="loadOrders()" [disabled]="loadingOrders">
-            {{ loadingOrders ? 'Cargando...' : 'Recargar' }}
-          </button>
-        </div>
-
-        @if (!orders.length) {
-          <p class="muted">Sin pedidos todavia.</p>
-        } @else {
-          <ul class="list">
-            @for (order of orders; track order.id) {
-              <li>
-                <div class="row">
-                  <strong>#{{ order.id }} - {{ order.status }}</strong>
-                  <span>Total: {{ order.total }}</span>
-                </div>
-                @if (canCancel(order.status)) {
-                  <button
-                    type="button"
-                    class="danger"
-                    (click)="cancelOrder(order.id)"
-                    [disabled]="cancellingOrderId === order.id"
-                  >
-                    {{ cancellingOrderId === order.id ? 'Cancelando...' : 'Cancelar pedido' }}
-                  </button>
-                }
-              </li>
-            }
-          </ul>
-        }
-      </article>
-
-      <article class="card">
-        <h3>Reportar incidencia</h3>
-        @if (!orders.length) {
-          <p class="muted">Necesitas al menos un pedido para reportar incidencia.</p>
-        } @else {
-          <form class="form" (submit)="createIncident($event)">
-            <label>
-              Pedido
-              <select name="incidentOrderId" [(ngModel)]="incidentOrderId" required>
-                @for (order of orders; track order.id) {
-                  <option [ngValue]="order.id">#{{ order.id }} - {{ order.status }}</option>
-                }
-              </select>
-            </label>
-
-            <label>
-              Titulo
-              <input
-                type="text"
-                name="incidentTitle"
-                [(ngModel)]="incidentTitle"
-                required
-                minlength="5"
-                maxlength="120"
-              />
-            </label>
-
-            <label>
-              Descripcion
-              <input
-                type="text"
-                name="incidentDescription"
-                [(ngModel)]="incidentDescription"
-                required
-                minlength="10"
-                maxlength="500"
-              />
-            </label>
-
-            <button type="submit" [disabled]="savingIncident">
-              {{ savingIncident ? 'Enviando...' : 'Enviar incidencia' }}
+      <!-- ORDERS & SUPPORT -->
+      <div class="dashboard__secondary">
+        <article class="card">
+          <header class="card-header">
+            <h3>Mis Pedidos</h3>
+            <button class="refresh-btn" (click)="loadOrders()" [disabled]="loadingOrders">
+              <svg [class.spin]="loadingOrders" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
             </button>
-          </form>
-        }
-
-        <div class="card-title incidents-title">
-          <h3>Mis incidencias</h3>
-          <button type="button" class="ghost" (click)="loadIncidents()" [disabled]="loadingIncidents">
-            {{ loadingIncidents ? 'Cargando...' : 'Recargar incidencias' }}
-          </button>
-        </div>
-
-        @if (!incidents.length) {
-          <p class="muted">No has reportado incidencias.</p>
-        } @else {
-          <ul class="list">
-            @for (incident of incidents; track incident.id) {
-              <li>
-                <div class="row">
-                  <strong>#{{ incident.id }} - {{ incident.status }}</strong>
-                  <span>Pedido #{{ incident.order_id }}</span>
+          </header>
+          
+          <div class="order-list">
+            @if (loadingOrders) { <div class="skeleton-list"></div> }
+            @else if (!orders.length) { <div class="empty-state">No hay pedidos aún.</div> }
+            @else {
+              @for (o of orders; track o.id) {
+                <div class="order-card">
+                  <div class="order-card__header">
+                    <strong>#{{ o.id }}</strong>
+                    <span class="status-badge" [class]="'status-' + o.status.toLowerCase()">{{ o.status }}</span>
+                  </div>
+                  <div class="order-card__footer">
+                    <span>Total: \${{ o.total }}</span>
+                    @if (canCancel(o.status)) {
+                      <button (click)="cancelOrder(o.id)" [disabled]="cancellingOrderId === o.id">Cancelar</button>
+                    }
+                  </div>
                 </div>
-                <strong>{{ incident.title }}</strong>
-                <span class="meta">{{ incident.description }}</span>
-              </li>
+              }
             }
-          </ul>
-        }
-      </article>
+          </div>
+        </article>
 
-      @if (message) {
-        <p class="message">{{ message }}</p>
-      }
-      @if (errorMessage) {
-        <p class="error">{{ errorMessage }}</p>
-      }
+        <article class="card">
+          <header class="card-header">
+            <h3>Soporte</h3>
+            <button class="refresh-btn" (click)="loadIncidents()" [disabled]="loadingIncidents">
+              <svg [class.spin]="loadingIncidents" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            </button>
+          </header>
+
+          <form class="incident-form" (submit)="createIncident($event)">
+            <select name="incidentOrderId" [(ngModel)]="incidentOrderId" required>
+              <option [ngValue]="null" disabled selected>Selecciona un pedido</option>
+              @for (o of orders; track o.id) {
+                <option [ngValue]="o.id">Pedido #{{ o.id }}</option>
+              }
+            </select>
+            <input type="text" placeholder="Título del problema" [(ngModel)]="incidentTitle" name="title" required />
+            <textarea placeholder="Describe lo que pasó..." [(ngModel)]="incidentDescription" name="desc" required></textarea>
+            <button type="submit" [disabled]="savingIncident">Reportar Incidencia</button>
+          </form>
+
+          <div class="incident-list">
+             @for (inc of incidents; track inc.id) {
+               <div class="incident-item">
+                 <strong>{{ inc.title }}</strong>
+                 <p>{{ inc.description }}</p>
+                 <span class="status">{{ inc.status }}</span>
+               </div>
+             }
+          </div>
+        </article>
+      </div>
+
+      @if (message) { <div class="toast success">{{ message }}</div> }
+      @if (errorMessage) { <div class="toast error">{{ errorMessage }}</div> }
     </section>
   `,
   styles: `
-    .page { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 1.25rem; }
-    p { color: var(--muted); }
-    .card { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); padding: 0.9rem; margin-top: 0.9rem; }
-    .card-title { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; }
-    .card-title h3 { margin: 0; }
-    .incidents-title { margin-top: 0.8rem; }
-    label { display: grid; gap: 0.3rem; font-size: 0.9rem; margin-top: 0.6rem; }
-    input, select {
-      border: 1px solid var(--line-strong);
-      border-radius: 10px;
-      padding: 0.5rem 0.62rem;
-      font: inherit;
-      background: var(--surface);
+    .dashboard { display: grid; gap: var(--space-4); padding: var(--space-4); max-width: 1200px; margin: 0 auto; }
+    
+    .dashboard__header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
+    .welcome h2 { margin: 0; font-size: 1.8rem; font-weight: 800; }
+    .welcome p { margin: 0.2rem 0 0; color: var(--muted); font-size: 1rem; }
+
+    .action-btn {
+      display: flex; align-items: center; gap: 0.5rem; background: var(--panel); border: 1.5px solid var(--line); padding: 0.6rem 1.2rem; border-radius: 99px; text-decoration: none; color: var(--ink); font-weight: 700; font-size: 0.9rem; transition: all 0.2s;
     }
-    .restaurant-grid {
-      display: grid;
-      gap: 0.6rem;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      margin-top: 0.75rem;
+    .action-btn:hover { border-color: var(--primary); background: var(--primary-soft); transform: translateY(-2px); }
+    .action-btn svg { width: 1rem; height: 1rem; }
+
+    .card { background: var(--panel); border: 1.5px solid var(--line); border-radius: var(--radius-lg); padding: var(--space-4); box-shadow: var(--shadow-xs); }
+    .card-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
+    .step-badge { width: 32px; height: 32px; background: var(--primary); color: white; border-radius: 50%; display: grid; place-items: center; font-weight: 900; }
+    .card-header h3 { margin: 0; flex: 1; font-weight: 800; }
+
+    .refresh-btn { background: none; border: none; color: var(--muted); cursor: pointer; padding: 4px; border-radius: 50%; }
+    .refresh-btn:hover { background: var(--surface-alt); color: var(--ink); }
+    .refresh-btn svg { width: 1.2rem; height: 1.2rem; }
+    .refresh-btn svg.spin { animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* STEP 1 Grid */
+    .restaurant-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+    .r-card {
+      display: flex; flex-direction: column; padding: 0; border: 1.5px solid var(--line); border-radius: var(--radius-md); background: var(--surface); cursor: pointer; transition: all 0.2s; overflow: hidden; text-align: left;
     }
-    .restaurant-card {
-      width: 100%;
-      text-align: left;
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      background: var(--surface);
-      padding: 0.65rem;
-      display: grid;
-      gap: 0.25rem;
-      cursor: pointer;
-      transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+    .r-card:hover { border-color: var(--primary-mid); transform: translateY(-3px); box-shadow: var(--shadow-sm); }
+    .r-card.active { border-color: var(--primary); background: var(--primary-soft); }
+    .r-card__banner { height: 60px; display: grid; place-items: center; font-size: 1.5rem; font-weight: 900; color: white; opacity: 0.8; }
+    .r-card__info { padding: 0.8rem; display: grid; gap: 0.2rem; }
+    .r-card__info strong { font-size: 1rem; }
+    .status { font-size: 0.75rem; font-weight: 700; color: var(--muted); }
+    .status.open { color: var(--success); }
+
+    /* STEP 2 Menu */
+    .restaurant-label { margin: -1rem 0 1.5rem; font-weight: 700; color: var(--muted); }
+    .catalog-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }
+    .product-item { display: flex; gap: 1rem; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md); padding: 0.8rem; align-items: center; }
+    .product-item img { width: 80px; height: 80px; border-radius: 12px; object-fit: cover; }
+    .product-item__details { display: grid; gap: 0.2rem; flex: 1; }
+    .product-item__details strong { font-size: 0.95rem; }
+    .price { font-weight: 800; color: var(--primary-strong); }
+    .add-btn { background: var(--ink); color: white; border: none; padding: 4px 12px; border-radius: 99px; font-size: 0.8rem; font-weight: 700; cursor: pointer; width: fit-content; }
+
+    .floating-summary {
+       position: sticky; bottom: 1rem; background: var(--ink); color: white; padding: 1rem 1.5rem; border-radius: 99px; display: flex; justify-content: space-between; align-items: center; margin-top: 2rem; transform: translateY(100px); opacity: 0; transition: all 0.3s;
     }
-    .restaurant-card:hover {
-      transform: translateY(-1px);
-      border-color: var(--line-strong);
-      box-shadow: 0 10px 20px rgb(180 84 35 / 10%);
-    }
-    .restaurant-card.active {
-      border-color: var(--primary);
-      background: var(--primary-soft);
-    }
-    .list { list-style: none; margin: 0.75rem 0 0; padding: 0; display: grid; gap: 0.45rem; }
-    .list li { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 0.55rem 0.62rem; display: grid; gap: 0.3rem; }
-    .catalog { margin-top: 0.75rem; display: grid; gap: 0.6rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
-    .product-card {
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      background: var(--surface);
-      padding: 0.6rem;
-      display: grid;
-      gap: 0.4rem;
-    }
-    .product-thumb {
-      width: 100%;
-      height: 130px;
-      object-fit: cover;
-      border-radius: 10px;
-      border: 1px solid var(--line);
-      background: #fff;
-    }
-    .row { display: flex; justify-content: space-between; gap: 0.5rem; align-items: center; }
-    .meta { font-size: 0.88rem; color: var(--muted); }
-    .qty { display: flex; align-items: center; gap: 0.4rem; }
-    .total { margin-top: 0.7rem; }
-    .checkout-summary {
-      margin-top: 0.8rem;
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      background: var(--surface);
-      padding: 0.7rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 0.6rem;
-      flex-wrap: wrap;
-    }
-    .form { display: grid; gap: 0.6rem; margin-top: 0.65rem; }
-    .actions { display: flex; gap: 0.45rem; flex-wrap: wrap; }
-    button {
-      border: 0;
-      border-radius: 999px;
-      padding: 0.42rem 0.82rem;
-      background: var(--primary);
-      color: #fff;
-      cursor: pointer;
-    }
-    .ghost { background: var(--surface); border: 1px solid var(--line); color: var(--ink); }
-    .danger { background: var(--danger); }
-    .muted { margin-top: 0.5rem; }
-    .message { color: var(--primary); font-weight: 600; margin-top: 0.9rem; }
-    .error { color: var(--danger); font-weight: 600; margin-top: 0.9rem; }
+    .floating-summary.visible { transform: translateY(0); opacity: 1; }
+    .checkout-btn { background: var(--primary); border: none; color: white; padding: 0.6rem 1.2rem; border-radius: 99px; font-weight: 800; cursor: pointer; }
+
+    /* Checkout */
+    .cart-list { list-style: none; padding: 0; display: grid; gap: 0.8rem; }
+    .cart-item { display: flex; justify-content: space-between; padding: 1rem; background: var(--surface-alt); border-radius: 12px; }
+    .item-controls { display: flex; align-items: center; gap: 0.8rem; }
+    .item-controls button { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--line); background: white; cursor: pointer; }
+    .item-controls .remove { border: none; color: var(--danger); background: transparent; font-weight: 700; width: auto; font-size: 0.85rem; }
+
+    .checkout-footer { margin-top: 2rem; padding-top: 1.5rem; border-top: 1.5px dashed var(--line); }
+    .total-row { display: flex; justify-content: space-between; font-size: 1.2rem; margin-bottom: 2rem; }
+    .checkout-form { display: grid; gap: 1.5rem; }
+    .form-group { display: grid; gap: 0.5rem; }
+    .form-group label { font-weight: 700; font-size: 0.9rem; }
+    .form-group input, .form-group select { padding: 0.8rem; border-radius: 12px; border: 1.5px solid var(--line); background: white; font-family: inherit; }
+
+    /* Secondary sections */
+    .dashboard__secondary { display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+    .order-list, .incident-list { display: grid; gap: 0.8rem; margin-top: 1rem; }
+    .order-card { padding: 1rem; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+    .order-card__header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+    .status-badge { font-size: 0.7rem; font-weight: 900; text-transform: uppercase; padding: 2px 8px; border-radius: 99px; background: #eee; }
+    .status-delivered { background: var(--success-soft); color: var(--success); }
+    .status-pending { background: #fff8e1; color: #ff8f00; }
+
+    .incident-form { display: grid; gap: 0.8rem; margin-bottom: 1.5rem; }
+    .incident-form button { background: var(--ink); color: white; border: none; padding: 0.8rem; border-radius: 12px; font-weight: 700; cursor: pointer; }
+    .incident-item { padding: 1rem; border-radius: 12px; background: var(--surface-alt); border-left: 4px solid var(--danger); }
+
+    .anim-slide-up { animation: slideUp 0.4s ease-out; }
+    @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+    .toast { position: fixed; bottom: 2rem; right: 2rem; padding: 1rem 2rem; border-radius: 12px; color: white; font-weight: 800; animation: slideUp 0.3s; z-index: 1000; }
+    .toast.success { background: var(--ink); }
+    .toast.error { background: var(--danger); }
   `
 })
 export class ClientDashboardPageComponent implements OnDestroy {
-  private static readonly CART_KEY = 'delivery.client.cart.v1';
+  private readonly apiService = inject(ApiService);
+  private readonly orderState = inject(ClientOrderStateService);
+  private readonly orderEventsService = inject(OrderEventsService);
+  private readonly profileService = inject(ProfileService);
+
   protected readonly defaultProductImage = 'assets/placeholder-food.svg';
+  protected readonly cart = this.orderState.cart;
+  protected readonly cartSubtotal = this.orderState.cartSubtotal;
+  protected readonly cartItemsCount = this.orderState.cartItemsCount;
+  protected readonly selectedRestaurantId = this.orderState.selectedRestaurantId;
+  protected readonly selectedRestaurantName = this.orderState.selectedRestaurantName;
+  protected readonly profile = this.profileService.profile;
 
   protected viewMode: ViewMode = 'restaurants';
   protected restaurants: Restaurant[] = [];
-  protected selectedRestaurantId: number | null = null;
-  protected selectedRestaurantName = '';
   protected products: Product[] = [];
 
-  protected cart: CartLine[] = [];
   protected deliveryAddress = '';
   protected paymentMethod = 'SIMULATED_CARD';
 
@@ -410,10 +363,7 @@ export class ClientDashboardPageComponent implements OnDestroy {
 
   private eventSource: EventSource | null = null;
 
-  constructor(
-    private readonly apiService: ApiService,
-    private readonly orderEventsService: OrderEventsService
-  ) {
+  constructor() {
     void this.boot();
   }
 
@@ -421,17 +371,19 @@ export class ClientDashboardPageComponent implements OnDestroy {
     this.eventSource?.close();
   }
 
-  protected get cartSubtotal(): number {
-    return this.cart.reduce((sum, line) => sum + line.price * line.quantity, 0);
-  }
-
-  protected get cartItemsCount(): number {
-    return this.cart.reduce((sum, line) => sum + line.quantity, 0);
-  }
-
   protected asPrice(value: number | string): string {
     const parsed = typeof value === 'string' ? Number(value) : value;
     return Number.isFinite(parsed) ? parsed.toFixed(2) : '0.00';
+  }
+
+  protected bannerGradient(id: number): string {
+    const gradients = [
+      'linear-gradient(135deg, #FF6B6B 0%, #FF8E8E 100%)',
+      'linear-gradient(135deg, #4ECDC4 0%, #55E2D9 100%)',
+      'linear-gradient(135deg, #45B7D1 0%, #59CBE8 100%)',
+      'linear-gradient(135deg, #F9D423 0%, #FF4E50 100%)'
+    ];
+    return gradients[id % gradients.length];
   }
 
   protected async selectRestaurant(restaurant: Restaurant): Promise<void> {
@@ -439,19 +391,18 @@ export class ClientDashboardPageComponent implements OnDestroy {
     this.errorMessage = '';
 
     if (
-      this.selectedRestaurantId &&
-      this.selectedRestaurantId !== restaurant.id &&
-      this.cart.length > 0
+      this.selectedRestaurantId() &&
+      this.selectedRestaurantId() !== restaurant.id &&
+      this.cart().length > 0
     ) {
       const confirmed = window.confirm(
-        'Si cambias de restaurante se vaciara el carrito actual. Deseas continuar?'
+        'Si cambias de restaurante se vaciará el carrito actual. ¿Deseas continuar?'
       );
       if (!confirmed) return;
-      this.clearCart();
+      this.orderState.clearCart();
     }
 
-    this.selectedRestaurantId = restaurant.id;
-    this.selectedRestaurantName = restaurant.name;
+    this.orderState.setRestaurant(restaurant.id, restaurant.name);
     this.viewMode = 'menu';
     await this.loadProducts(restaurant.id);
   }
@@ -459,74 +410,38 @@ export class ClientDashboardPageComponent implements OnDestroy {
   protected backToRestaurants(): void {
     this.message = '';
     this.errorMessage = '';
-
-    if (this.cart.length > 0) {
-      const confirmed = window.confirm(
-        'Estas seguro que quieres salir? Se vaciara el carrito actual.'
-      );
-      if (!confirmed) return;
-      this.clearCart();
-    }
-
     this.viewMode = 'restaurants';
-    this.selectedRestaurantId = null;
-    this.selectedRestaurantName = '';
-    this.products = [];
+    this.orderState.clearRestaurant();
   }
 
   protected goToCheckout(): void {
     this.message = '';
     this.errorMessage = '';
-    if (!this.cart.length) {
-      this.errorMessage = 'Agrega al menos un producto antes de continuar al pago.';
+    if (!this.cart().length) {
+      this.errorMessage = 'Agrega al menos un producto.';
       return;
     }
     this.viewMode = 'checkout';
   }
 
   protected returnToMenu(): void {
-    this.message = '';
-    this.errorMessage = '';
     this.viewMode = 'menu';
   }
 
   protected addToCart(product: Product): void {
-    if (!this.selectedRestaurantId) return;
-
-    const existing = this.cart.find((line) => line.productId === product.id);
-    if (existing) {
-      existing.quantity += 1;
-      this.persistCart();
-      return;
-    }
-
-    this.cart.push({
-      productId: product.id,
-      name: product.name,
-      price: Number(product.price),
-      quantity: 1
-    });
-    this.persistCart();
+    this.orderState.addProduct(product);
   }
 
   protected changeQty(productId: number, delta: number): void {
-    const line = this.cart.find((item) => item.productId === productId);
-    if (!line) return;
-    line.quantity += delta;
-    if (line.quantity <= 0) {
-      this.cart = this.cart.filter((item) => item.productId !== productId);
-    }
-    this.persistCart();
+    this.orderState.changeQty(productId, delta);
   }
 
   protected removeFromCart(productId: number): void {
-    this.cart = this.cart.filter((item) => item.productId !== productId);
-    this.persistCart();
+    this.orderState.removeProduct(productId);
   }
 
   protected clearCart(): void {
-    this.cart = [];
-    localStorage.removeItem(ClientDashboardPageComponent.CART_KEY);
+    this.orderState.clearCart();
   }
 
   protected async checkout(event: Event): Promise<void> {
@@ -534,31 +449,25 @@ export class ClientDashboardPageComponent implements OnDestroy {
     this.errorMessage = '';
     this.message = '';
 
-    if (!this.selectedRestaurantId) {
-      this.errorMessage = 'Selecciona un restaurante.';
-      return;
-    }
-    if (!this.cart.length) {
-      this.errorMessage = 'El carrito esta vacio.';
-      return;
-    }
+    const restaurantId = this.selectedRestaurantId();
+    if (!restaurantId) return;
 
     this.placingOrder = true;
     try {
       const order = await this.apiService.createOrder({
-        restaurantId: this.selectedRestaurantId,
+        restaurantId,
         deliveryAddress: this.deliveryAddress.trim(),
         paymentMethod: this.paymentMethod,
-        items: this.cart.map((line) => ({
+        items: this.cart().map((line) => ({
           productId: line.productId,
           quantity: line.quantity
         }))
       });
 
-      this.message = `Pedido #${order.id} creado correctamente.`;
-      this.clearCart();
+      this.message = `¡Pedido #${order.id} creado con éxito!`;
+      this.orderState.clearCart();
       this.deliveryAddress = '';
-      this.viewMode = 'menu';
+      this.viewMode = 'restaurants';
       await this.loadOrders();
     } catch (error) {
       this.errorMessage = this.toErrorMessage(error, 'No se pudo crear el pedido.');
@@ -568,15 +477,13 @@ export class ClientDashboardPageComponent implements OnDestroy {
   }
 
   protected async cancelOrder(orderId: number): Promise<void> {
-    this.errorMessage = '';
-    this.message = '';
     this.cancellingOrderId = orderId;
     try {
       await this.apiService.cancelOrder(orderId);
       this.message = `Pedido #${orderId} cancelado.`;
       await this.loadOrders();
     } catch (error) {
-      this.errorMessage = this.toErrorMessage(error, 'No se pudo cancelar el pedido.');
+      this.errorMessage = this.toErrorMessage(error, 'Error al cancelar.');
     } finally {
       this.cancellingOrderId = null;
     }
@@ -588,11 +495,10 @@ export class ClientDashboardPageComponent implements OnDestroy {
 
   protected async loadRestaurants(): Promise<void> {
     this.loadingRestaurants = true;
-    this.errorMessage = '';
     try {
       this.restaurants = await this.apiService.getRestaurants();
     } catch (error) {
-      this.errorMessage = this.toErrorMessage(error, 'No se pudo cargar restaurantes.');
+      this.errorMessage = 'Error al cargar restaurantes.';
     } finally {
       this.loadingRestaurants = false;
     }
@@ -600,17 +506,10 @@ export class ClientDashboardPageComponent implements OnDestroy {
 
   protected async loadOrders(): Promise<void> {
     this.loadingOrders = true;
-    this.errorMessage = '';
     try {
       this.orders = await this.apiService.getMyOrders();
-      if (!this.orders.find((order) => order.id === this.incidentOrderId)) {
-        this.incidentOrderId = this.orders[0]?.id ?? null;
-      }
-      if (!this.incidentOrderId && this.orders.length > 0) {
-        this.incidentOrderId = this.orders[0].id;
-      }
     } catch (error) {
-      this.errorMessage = this.toErrorMessage(error, 'No se pudo cargar pedidos.');
+      this.errorMessage = 'Error al cargar pedidos.';
     } finally {
       this.loadingOrders = false;
     }
@@ -618,11 +517,10 @@ export class ClientDashboardPageComponent implements OnDestroy {
 
   protected async loadIncidents(): Promise<void> {
     this.loadingIncidents = true;
-    this.errorMessage = '';
     try {
       this.incidents = await this.apiService.getIncidents();
     } catch (error) {
-      this.errorMessage = this.toErrorMessage(error, 'No se pudo cargar incidencias.');
+      this.errorMessage = 'Error al cargar incidencias.';
     } finally {
       this.loadingIncidents = false;
     }
@@ -630,61 +528,32 @@ export class ClientDashboardPageComponent implements OnDestroy {
 
   protected async createIncident(event: Event): Promise<void> {
     event.preventDefault();
-    this.errorMessage = '';
-    this.message = '';
-
-    if (!this.incidentOrderId) {
-      this.errorMessage = 'Selecciona un pedido.';
-      return;
-    }
-
-    const title = this.incidentTitle.trim();
-    const description = this.incidentDescription.trim();
-
-    if (title.length < 5) {
-      this.errorMessage = 'El titulo debe tener al menos 5 caracteres.';
-      return;
-    }
-
-    if (description.length < 10) {
-      this.errorMessage = 'La descripcion debe tener al menos 10 caracteres.';
-      return;
-    }
+    if (!this.incidentOrderId) return;
 
     this.savingIncident = true;
     try {
       const incident = await this.apiService.createIncident({
         orderId: this.incidentOrderId,
-        title,
-        description
+        title: this.incidentTitle.trim(),
+        description: this.incidentDescription.trim()
       });
-      this.message = `Incidencia #${incident.id} creada.`;
+      this.message = `Incidencia #${incident.id} enviada.`;
       this.incidentTitle = '';
       this.incidentDescription = '';
       await this.loadIncidents();
     } catch (error) {
-      this.errorMessage = this.toErrorMessage(error, 'No se pudo crear la incidencia.');
+      this.errorMessage = 'Error al enviar incidencia.';
     } finally {
       this.savingIncident = false;
     }
   }
 
   private async boot(): Promise<void> {
-    this.restoreCart();
     await Promise.all([this.loadRestaurants(), this.loadOrders(), this.loadIncidents()]);
-
-    if (this.selectedRestaurantId) {
-      const selected = this.restaurants.find((item) => item.id === this.selectedRestaurantId);
-      if (selected) {
-        this.selectedRestaurantName = selected.name;
-        this.viewMode = 'menu';
-        await this.loadProducts(selected.id);
-      } else {
-        this.selectedRestaurantId = null;
-        this.selectedRestaurantName = '';
-        this.products = [];
-        this.clearCart();
-      }
+    
+    if (this.selectedRestaurantId()) {
+      this.viewMode = 'menu';
+      await this.loadProducts(this.selectedRestaurantId()!);
     }
 
     await this.connectEvents();
@@ -692,42 +561,10 @@ export class ClientDashboardPageComponent implements OnDestroy {
 
   private async loadProducts(restaurantId: number): Promise<void> {
     this.loadingProducts = true;
-    this.errorMessage = '';
     try {
       this.products = await this.apiService.getProductsByRestaurant(restaurantId);
-    } catch (error) {
-      this.errorMessage = this.toErrorMessage(error, 'No se pudo cargar el menu.');
     } finally {
       this.loadingProducts = false;
-    }
-  }
-
-  private persistCart(): void {
-    const payload = {
-      restaurantId: this.selectedRestaurantId,
-      lines: this.cart
-    };
-    localStorage.setItem(ClientDashboardPageComponent.CART_KEY, JSON.stringify(payload));
-  }
-
-  private restoreCart(): void {
-    try {
-      const raw = localStorage.getItem(ClientDashboardPageComponent.CART_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as {
-        restaurantId: number | null;
-        lines: CartLine[];
-      };
-      if (!Array.isArray(parsed.lines)) return;
-      this.selectedRestaurantId = parsed.restaurantId;
-      this.cart = parsed.lines.filter(
-        (line) =>
-          Number.isFinite(line.productId) &&
-          Number.isFinite(line.price) &&
-          Number.isFinite(line.quantity)
-      );
-    } catch {
-      this.clearCart();
     }
   }
 
@@ -736,23 +573,15 @@ export class ClientDashboardPageComponent implements OnDestroy {
       onConnected: () => {},
       onError: () => {},
       onOrderStatusChanged: (event: OrderStatusEvent) => {
-        const found = this.orders.find((order) => order.id === event.orderId);
-        if (found) {
-          found.status = event.status;
-        } else {
-          void this.loadOrders();
-        }
+        void this.loadOrders();
       }
     });
   }
 
   private toErrorMessage(error: unknown, fallback: string): string {
     if (error instanceof HttpErrorResponse) {
-      const payload = error.error as { error?: string; details?: unknown } | null;
-      if (payload?.error) return payload.error;
-      return `HTTP ${error.status}: ${error.statusText || fallback}`;
+      return (error.error as any)?.error || fallback;
     }
-    if (error instanceof Error) return error.message;
     return fallback;
   }
 }

@@ -16,598 +16,244 @@ import { SessionService } from '../core/session.service';
     <section class="auth-layout">
       <article class="auth-shell">
 
-        <!-- Left: hero panel -->
-        <aside class="hero">
-          <span class="hero-chip">
-            <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><circle cx="8" cy="8" r="3.5"/></svg>
-            Acceso seguro
-          </span>
-          <h2>Gestiona tus pedidos en un solo lugar</h2>
-          <p>
-            Inicia sesión o crea tu cuenta para acceder al flujo de cliente,
-            restaurante o repartidor con una experiencia clara y profesional.
-          </p>
-
-          <img
-            src="assets/illustration-hero-delivery.svg"
-            alt="Ilustración de entrega de pedidos"
-            loading="lazy"
-            class="hero-img"
-          />
-
-          <ul class="hero-list">
-            <li>
-              <span class="list-icon">✓</span>
-              Seguimiento en tiempo real del estado del pedido
-            </li>
-            <li>
-              <span class="list-icon">✓</span>
-              Pagos simulados para pruebas académicas
-            </li>
-            <li>
-              <span class="list-icon">✓</span>
-              Permisos por rol según tu tipo de cuenta
-            </li>
-          </ul>
+        <!-- Lado Visual: Marketing B2C (Tipo UberEats/Rappi) -->
+        <aside class="hero-sidebar">
+          <div class="hero-content">
+            <span class="hero-badge">🛵 Entrega en minutos</span>
+            <h2>¿Qué se te antoja <span>hoy?</span></h2>
+            <p>Tus restaurantes favoritos, supermercado y farmacia a la puerta de tu casa.</p>
+          </div>
+          
+          <!-- Un bloque visual de comida/delivery -->
+          <div class="hero-graphic">
+             <div class="floating-card c1">🍕 Pizza Caliente</div>
+             <div class="floating-card c2">🍣 Sushi 2x1</div>
+             <div class="floating-card c3">🍔 Hamburguesas</div>
+          </div>
         </aside>
 
-        <!-- Right: form panel -->
-        <section class="panel">
-          <header class="panel-head">
-            <h3>{{ mode() === 'login' ? 'Bienvenido de vuelta' : 'Crea tu cuenta' }}</h3>
-            <p>
-              {{ mode() === 'login'
-                ? 'Accede con tu correo y contraseña.'
-                : 'Regístrate y completa tu perfil para comenzar.' }}
-            </p>
-          </header>
+        <!-- Lado de Formulario: Limpio y Amigable -->
+        <section class="form-panel">
+          
+          <div class="form-container">
+            <!-- Logo B2C -->
+            <div class="brand-header">
+              <div class="brand__badge">E4</div>
+              <h1>Delivery</h1>
+            </div>
 
-          <!-- Tab switcher -->
-          <div class="tabs" role="tablist" aria-label="Modo de acceso">
-            <button
-              type="button"
-              role="tab"
-              [attr.aria-selected]="mode() === 'login'"
-              [class.active]="mode() === 'login'"
-              (click)="setMode('login')"
-            >
-              Iniciar sesión
-            </button>
-            <button
-              type="button"
-              role="tab"
-              [attr.aria-selected]="mode() === 'signup'"
-              [class.active]="mode() === 'signup'"
-              (click)="setMode('signup')"
-            >
-              Registrarse
-            </button>
-          </div>
+            <header class="form-header">
+              <h3>{{ mode() === 'login' ? '¡Hola de nuevo!' : 'Crea tu cuenta' }}</h3>
+              <p>{{ mode() === 'login' ? 'Ingresa para pedir tus favoritos.' : 'Regístrate y recibe promociones exclusivas.' }}</p>
+            </header>
 
-          <!-- Auth form -->
-          <form class="form" (submit)="onSubmitAuth($event)">
-            <label>
-              <span class="label-text">Correo electrónico</span>
-              <input
-                type="email"
-                [(ngModel)]="email"
-                name="email"
-                autocomplete="email"
-                placeholder="tucorreo@ejemplo.com"
-                required
-              />
-            </label>
+            <!-- Píldoras de Navegación -->
+            <nav class="auth-tabs">
+              <button 
+                type="button" 
+                [class.active]="mode() === 'login'" 
+                (click)="setMode('login')">
+                Ingresar
+              </button>
+              <button 
+                type="button" 
+                [class.active]="mode() === 'signup'" 
+                (click)="setMode('signup')">
+                Registrarse
+              </button>
+            </nav>
 
-            <label>
-              <span class="label-text">Contraseña</span>
-              <input
-                type="password"
-                [(ngModel)]="password"
-                name="password"
-                autocomplete="current-password"
-                placeholder="Mínimo 6 caracteres"
-                required
-                minlength="6"
-              />
-            </label>
-
-            <button type="submit" class="btn-submit" [disabled]="loadingAuth()">
-              @if (loadingAuth()) {
-                <span class="spinner"></span>
-                Validando...
-              } @else {
-                {{ mode() === 'login' ? 'Entrar' : 'Crear cuenta' }}
-              }
-            </button>
-          </form>
-
-          <!-- Profile completion -->
-          @if (needsProfileForm()) {
-            <section class="profile-card">
-              <div class="profile-head">
-                <div class="profile-icon">👤</div>
-                <div>
-                  <strong>Completa tu perfil</strong>
-                  <p>Elige el tipo de cuenta para habilitar tu panel principal.</p>
-                </div>
+            <form class="auth-form" (submit)="onSubmitAuth($event)">
+              <div class="input-group">
+                <input type="email" id="email" [(ngModel)]="email" name="email" placeholder="Correo electrónico" required />
               </div>
 
-              <form class="form profile-form" (submit)="onSubmitProfile($event)">
-                <label>
-                  <span class="label-text">Nombre completo</span>
-                  <input
-                    type="text"
-                    [(ngModel)]="fullName"
-                    name="fullName"
-                    autocomplete="name"
-                    placeholder="Ej. Luis Fernando Fernández García"
-                    required
-                  />
-                </label>
+              <div class="input-group">
+                <input type="password" id="password" [(ngModel)]="password" name="password" placeholder="Contraseña" required minlength="6" />
+              </div>
 
-                <div>
-                  <span class="label-text" style="display:block;margin-bottom:0.6rem;">Tipo de cuenta</span>
-                  <div class="role-grid">
-                    <button type="button" class="role-btn" [class.active]="role === 'client'" (click)="role = 'client'">
-                      <span class="role-icon">🛒</span>
-                      <strong>Cliente</strong>
-                      <small>Pedir comida y dar seguimiento</small>
+              <button type="submit" class="btn-primary-auth" [disabled]="loadingAuth()">
+                @if (loadingAuth()) {
+                  <span class="auth-spinner"></span>
+                } @else {
+                  {{ mode() === 'login' ? 'Continuar' : 'Crear cuenta' }}
+                }
+              </button>
+            </form>
+
+            <!-- Paso 2: Completar Perfil -->
+            @if (needsProfileForm()) {
+              <div class="profile-overlay">
+                <div class="profile-modal">
+                  <header>
+                    <h4>¡Casi listo!</h4>
+                    <p>Cuéntanos un poco más sobre ti para terminar.</p>
+                  </header>
+
+                  <form class="profile-form" (submit)="onSubmitProfile($event)">
+                    <div class="input-group">
+                      <input type="text" [(ngModel)]="fullName" name="fullName" placeholder="Tu nombre y apellido" required />
+                    </div>
+
+                    <div class="role-selector">
+                      <label>¿Cómo vas a usar la app?</label>
+                      <div class="role-options">
+                        <!-- Opciones amigables -->
+                        <button type="button" class="role-card" [class.active]="role === 'client'" (click)="role = 'client'">
+                          <span class="role-emoji">🍔</span>
+                          <div class="role-meta">
+                            <strong>Quiero pedir comida</strong>
+                            <small>Cliente</small>
+                          </div>
+                        </button>
+                        <button type="button" class="role-card" [class.active]="role === 'restaurant'" (click)="role = 'restaurant'">
+                          <span class="role-emoji">🏪</span>
+                          <div class="role-meta">
+                            <strong>Quiero vender</strong>
+                            <small>Restaurante / Tienda</small>
+                          </div>
+                        </button>
+                        <button type="button" class="role-card" [class.active]="role === 'driver'" (click)="role = 'driver'">
+                          <span class="role-emoji">🛵</span>
+                          <div class="role-meta">
+                            <strong>Quiero repartir</strong>
+                            <small>Socio Conductor</small>
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+
+                    <button type="submit" class="btn-primary-auth" [disabled]="loadingProfile()">
+                      Comenzar a usar E4
                     </button>
-                    <button type="button" class="role-btn" [class.active]="role === 'restaurant'" (click)="role = 'restaurant'">
-                      <span class="role-icon">🍽️</span>
-                      <strong>Restaurante</strong>
-                      <small>Publicar menú y gestionar pedidos</small>
-                    </button>
-                    <button type="button" class="role-btn" [class.active]="role === 'driver'" (click)="role = 'driver'">
-                      <span class="role-icon">🚴</span>
-                      <strong>Entregador</strong>
-                      <small>Tomar entregas y actualizar estado</small>
-                    </button>
-                  </div>
+                  </form>
                 </div>
-
-                <div class="grid-two">
-                  <label>
-                    <span class="label-text">Teléfono <span class="optional">(opcional)</span></span>
-                    <input
-                      type="text"
-                      [(ngModel)]="phone"
-                      name="phone"
-                      autocomplete="tel"
-                      placeholder="Ej. 3331234567"
-                    />
-                  </label>
-
-                  <label>
-                    <span class="label-text">Dirección <span class="optional">(opcional)</span></span>
-                    <input
-                      type="text"
-                      [(ngModel)]="address"
-                      name="address"
-                      autocomplete="street-address"
-                      placeholder="Calle y número"
-                    />
-                  </label>
-                </div>
-
-                <button type="submit" class="btn-submit" [disabled]="loadingProfile()">
-                  @if (loadingProfile()) {
-                    <span class="spinner"></span>
-                    Guardando...
-                  } @else {
-                    Guardar y continuar →
-                  }
-                </button>
-              </form>
-            </section>
-          }
+              </div>
+            }
+          </div>
         </section>
       </article>
 
-      @if (message()) {
-        <div class="feedback feedback--message">
-          <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-          {{ message() }}
-        </div>
-      }
-
-      @if (errorMessage()) {
-        <div class="feedback feedback--error">
-          <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
-          {{ errorMessage() }}
-        </div>
-      }
+      <!-- Alertas -->
+      <div class="notifications">
+        @if (message()) { <div class="toast success">{{ message() }}</div> }
+        @if (errorMessage()) { <div class="toast error">{{ errorMessage() }}</div> }
+      </div>
     </section>
   `,
   styles: `
-    .auth-layout {
-      width: 100%;
-      display: grid;
-      gap: var(--space-4);
-    }
-
+    .auth-layout { display: flex; align-items: center; justify-content: center; min-height: 90vh; padding: 2rem; background: #F7F7F7; }
+    
     .auth-shell {
       display: grid;
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: var(--radius-xl);
-      box-shadow: var(--shadow-lg);
+      grid-template-columns: 1fr 1.2fr;
+      width: 100%;
+      max-width: 1000px;
+      background: var(--white);
+      border-radius: 32px;
+      overflow: hidden;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+      min-height: 600px;
+    }
+
+    /* Columna Visual (Naranja Rappi) */
+    .hero-sidebar {
+      background: var(--primary);
+      padding: 3.5rem;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      position: relative;
       overflow: hidden;
     }
 
-    /* ── Hero side ── */
-    .hero {
-      background:
-        radial-gradient(ellipse at 100% 0%, rgba(255, 167, 121, 0.35) 0, transparent 52%),
-        linear-gradient(160deg, #fff7f0 0%, #ffeedd 100%);
-      border-bottom: 1px solid var(--line);
-      padding: var(--space-6) var(--space-5);
-      display: grid;
-      gap: var(--space-4);
-      align-content: start;
-    }
+    .hero-badge { background: rgba(255,255,255,0.2); padding: 6px 12px; border-radius: 99px; font-weight: 700; font-size: 0.85rem; width: fit-content; margin-bottom: 2rem; }
+    .hero-content h2 { font-size: 2.8rem; line-height: 1.1; margin-bottom: 1rem; font-weight: 800; letter-spacing: -1px; }
+    .hero-content h2 span { color: #FFE0D4; }
+    .hero-content p { font-size: 1.1rem; opacity: 0.9; line-height: 1.4; }
 
-    .hero-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.38rem;
-      width: fit-content;
-      border-radius: 999px;
-      border: 1px solid var(--primary-muted);
-      background: rgba(255, 255, 255, 0.7);
-      color: var(--primary-strong);
-      font-size: 0.76rem;
-      font-weight: 700;
-      letter-spacing: 0.04em;
-      padding: 0.28rem 0.72rem;
-      text-transform: uppercase;
-    }
+    .hero-graphic { margin-top: auto; display: flex; flex-direction: column; gap: 1rem; position: relative; bottom: -20px;}
+    .floating-card { background: white; color: var(--ink); padding: 12px 20px; border-radius: 16px; font-weight: 800; font-size: 1.1rem; box-shadow: 0 10px 20px rgba(0,0,0,0.1); width: fit-content; }
+    .c1 { transform: rotate(-5deg); align-self: flex-start; }
+    .c2 { transform: rotate(3deg); align-self: center; }
+    .c3 { transform: rotate(-2deg); align-self: flex-end; }
 
-    .hero-chip svg {
-      width: 0.5rem;
-      height: 0.5rem;
-      animation: pulse 2s infinite;
-    }
+    /* Columna de Formulario */
+    .form-panel { padding: 3rem 4rem; background: #ffffff; display: flex; flex-direction: column; justify-content: center; position: relative; }
+    .form-container { width: 100%; max-width: 380px; margin: 0 auto; }
 
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.4; }
-    }
+    .brand-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 2.5rem; justify-content: center; }
+    .brand__badge { background: var(--primary); color: white; padding: 6px 10px; border-radius: 8px; font-weight: 900; font-size: 1.1rem; }
+    .brand-header h1 { font-size: 1.2rem; font-weight: 800; margin: 0; }
 
-    .hero h2 { margin: 0; max-width: 22ch; }
+    .form-header { text-align: center; margin-bottom: 2rem; }
+    .form-header h3 { font-size: 1.6rem; font-weight: 800; margin-bottom: 0.5rem; }
+    .form-header p { color: var(--ink-mid); font-size: 0.9rem; }
 
-    .hero p {
-      margin: 0;
-      color: var(--muted);
-      line-height: 1.65;
-      max-width: 44ch;
-    }
+    /* Tabs (Píldoras tipo Uber) */
+    .auth-tabs { display: flex; background: #F1F1F1; padding: 4px; border-radius: 99px; margin-bottom: 2rem; }
+    .auth-tabs button { flex: 1; border: none; padding: 12px; border-radius: 99px; font-weight: 800; font-size: 0.9rem; color: var(--ink-mid); cursor: pointer; transition: all 0.2s; background: transparent; }
+    .auth-tabs button.active { background: white; color: var(--ink); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
 
-    .hero-img {
+    /* Inputs B2C Grandes */
+    .auth-form { display: grid; gap: 1rem; }
+    
+    .input-group input {
       width: 100%;
-      max-width: 340px;
-      border-radius: var(--radius-md);
-      border: 1px solid var(--line);
-      background: rgba(255,255,255,0.6);
-      padding: var(--space-3);
-    }
-
-    .hero-list {
-      margin: 0;
-      padding: 0;
-      list-style: none;
-      display: grid;
-      gap: var(--space-2);
-    }
-
-    .hero-list li {
-      display: flex;
-      align-items: flex-start;
-      gap: 0.6rem;
-      color: #5f4a3f;
-      font-size: 0.9rem;
+      padding: 16px 20px;
+      border-radius: 16px;
+      border: 2px solid transparent;
+      background: #F4F4F4;
+      font-size: 1rem;
       font-weight: 500;
-    }
-
-    .list-icon {
-      width: 1.3rem;
-      height: 1.3rem;
-      border-radius: 50%;
-      background: var(--primary-soft);
-      border: 1px solid var(--primary-muted);
-      color: var(--primary-strong);
-      font-size: 0.68rem;
-      font-weight: 800;
-      display: grid;
-      place-items: center;
-      flex-shrink: 0;
-      margin-top: 0.1rem;
-    }
-
-    /* ── Form panel ── */
-    .panel {
-      padding: var(--space-6) var(--space-5);
-      display: grid;
-      gap: var(--space-5);
-      align-content: start;
-    }
-
-    .panel-head h3 {
-      margin: 0;
-      font-size: clamp(1.25rem, 1.5vw, 1.5rem);
-    }
-
-    .panel-head p {
-      margin: var(--space-2) 0 0;
-      color: var(--muted);
-      font-size: 0.9rem;
-    }
-
-    /* ── Tabs ── */
-    .tabs {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      border: 1px solid var(--line);
-      border-radius: var(--radius-md);
-      background: var(--surface-alt);
-      padding: 0.28rem;
-      gap: 0.28rem;
-    }
-
-    .tabs button {
-      border: 0;
-      background: transparent;
-      border-radius: calc(var(--radius-md) - 0.3rem);
-      min-height: 2.5rem;
-      padding: 0.42rem 0.8rem;
-      font-weight: 600;
-      font-size: 0.87rem;
-      color: var(--muted);
-      cursor: pointer;
-      transition: all 0.18s ease;
-    }
-
-    .tabs button.active {
-      background: var(--panel);
-      color: var(--ink);
-      font-weight: 700;
-      box-shadow: var(--shadow-xs);
-    }
-
-    /* ── Form ── */
-    .form {
-      display: grid;
-      gap: var(--space-4);
-    }
-
-    label {
-      display: grid;
-      gap: 0.4rem;
-    }
-
-    .label-text {
-      font-size: 0.86rem;
-      font-weight: 600;
-      color: var(--ink-2);
-    }
-
-    .optional {
-      font-weight: 400;
-      color: var(--muted-2);
-    }
-
-    input {
-      border: 1.5px solid var(--line);
-      border-radius: var(--radius-sm);
-      padding: 0.65rem 0.85rem;
-      font: inherit;
-      font-size: 0.93rem;
-      background: var(--surface);
-      color: var(--ink);
-      transition: border-color 0.15s ease, box-shadow 0.15s ease;
-      min-height: 44px;
-    }
-
-    input:hover { border-color: var(--line-strong); }
-    input:focus {
-      outline: none;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(248, 92, 35, 0.12);
-    }
-    input::placeholder { color: var(--muted-2); }
-
-    /* ── Submit button ── */
-    .btn-submit {
-      border: 0;
-      border-radius: var(--radius-sm);
-      min-height: 48px;
-      padding: 0.65rem 1.1rem;
-      background: linear-gradient(145deg, var(--primary) 0%, var(--primary-strong) 100%);
-      color: #fff;
-      font-weight: 700;
-      font-size: 0.93rem;
       font-family: inherit;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
-      transition: transform 0.18s ease, box-shadow 0.18s ease;
-      box-shadow: 0 4px 14px rgba(248, 92, 35, 0.28);
-      width: 100%;
+      transition: all 0.2s;
     }
 
-    .btn-submit:hover:not([disabled]) {
-      transform: translateY(-1px);
-      box-shadow: 0 8px 22px rgba(248, 92, 35, 0.36);
+    .input-group input:focus { outline: none; background: white; border-color: var(--ink); }
+    .input-group input::placeholder { color: #A0A0A0; }
+
+    /* Botón de Acción Principal */
+    .btn-primary-auth {
+      background: var(--primary); color: white; border: none; padding: 16px; border-radius: 99px; font-weight: 800; font-size: 1.05rem; cursor: pointer; transition: transform 0.2s; margin-top: 0.5rem; width: 100%; display: flex; justify-content: center;
     }
+    .btn-primary-auth:hover { transform: scale(1.02); }
+    .btn-primary-auth:disabled { opacity: 0.7; transform: none; }
 
-    .btn-submit[disabled] { opacity: 0.6; cursor: not-allowed; }
-
-    .spinner {
-      width: 1rem;
-      height: 1rem;
-      border: 2px solid rgba(255,255,255,0.4);
-      border-top-color: #fff;
-      border-radius: 50%;
-      animation: spin 0.6s linear infinite;
-      flex-shrink: 0;
+    /* Modal de Perfil */
+    .profile-overlay { position: absolute; inset: 0; background: white; padding: 3rem 4rem; z-index: 10; display: flex; flex-direction: column; justify-content: center; border-radius: 32px; }
+    .profile-modal header h4 { font-size: 1.8rem; font-weight: 800; margin-bottom: 0.5rem; }
+    .profile-modal header p { color: var(--ink-mid); margin-bottom: 2rem; }
+    
+    .role-selector label { font-weight: 800; display: block; margin: 1.5rem 0 1rem; }
+    .role-options { display: grid; gap: 0.8rem; margin-bottom: 2rem; }
+    
+    .role-card {
+      display: flex; align-items: center; gap: 1rem; padding: 16px; border-radius: 16px; border: 2px solid #F1F1F1; background: white; cursor: pointer; transition: all 0.2s; text-align: left;
     }
+    .role-card.active { border-color: var(--primary); background: var(--primary-soft); }
+    .role-emoji { font-size: 1.8rem; }
+    .role-meta strong { display: block; font-size: 1rem; font-weight: 800; color: var(--ink); }
+    .role-meta small { font-size: 0.8rem; color: var(--ink-mid); }
 
-    @keyframes spin { to { transform: rotate(360deg); } }
+    /* Toasts */
+    .notifications { position: fixed; top: 2rem; right: 2rem; display: grid; gap: 0.5rem; z-index: 2000; }
+    .toast { padding: 16px 24px; border-radius: 16px; color: white; font-weight: 800; font-size: 0.9rem; box-shadow: 0 10px 30px rgba(0,0,0,0.15); animation: dropIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+    .toast.success { background: var(--ink); }
+    .toast.error { background: #FF3B30; }
+    @keyframes dropIn { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
-    /* ── Profile card ── */
-    .profile-card {
-      border: 1.5px solid var(--line);
-      border-radius: var(--radius-lg);
-      background: linear-gradient(165deg, var(--surface) 0%, #fffaf3 100%);
-      padding: var(--space-5);
-      display: grid;
-      gap: var(--space-4);
-    }
-
-    .profile-head {
-      display: flex;
-      align-items: flex-start;
-      gap: var(--space-3);
-    }
-
-    .profile-icon {
-      font-size: 1.8rem;
-      line-height: 1;
-      flex-shrink: 0;
-    }
-
-    .profile-head strong {
-      display: block;
-      font-family: 'Sora', sans-serif;
-      font-size: 1.05rem;
-      font-weight: 700;
-      color: var(--ink);
-    }
-
-    .profile-head p {
-      margin: 0.3rem 0 0;
-      color: var(--muted);
-      font-size: 0.88rem;
-    }
-
-    /* ── Role grid ── */
-    .role-grid {
-      display: grid;
-      gap: var(--space-2);
-    }
-
-    .role-btn {
-      border: 1.5px solid var(--line);
-      border-radius: var(--radius-sm);
-      background: var(--panel);
-      text-align: left;
-      padding: var(--space-3) var(--space-3);
-      display: grid;
-      grid-template-columns: auto 1fr;
-      grid-template-rows: auto auto;
-      column-gap: var(--space-2);
-      align-items: center;
-      color: var(--ink);
-      cursor: pointer;
-      transition: all 0.18s ease;
-      min-height: auto;
-    }
-
-    .role-btn:hover:not(.active) {
-      border-color: var(--line-strong);
-      background: var(--surface-alt);
-    }
-
-    .role-btn.active {
-      border-color: var(--primary);
-      background: var(--primary-soft);
-      box-shadow: 0 0 0 3px rgba(248, 92, 35, 0.1);
-    }
-
-    .role-icon {
-      font-size: 1.5rem;
-      line-height: 1;
-      grid-row: span 2;
-    }
-
-    .role-btn strong { font-size: 0.9rem; font-weight: 700; }
-    .role-btn small {
-      color: var(--muted);
-      font-size: 0.78rem;
-      line-height: 1.3;
-    }
-
-    .role-btn.active small { color: var(--primary-strong); }
-
-    /* ── 2-col grid ── */
-    .grid-two {
-      display: grid;
-      gap: var(--space-3);
-    }
-
-    /* ── Feedback messages ── */
-    .feedback {
-      display: flex;
-      align-items: flex-start;
-      gap: 0.55rem;
-      padding: 0.75rem 1rem;
-      border-radius: var(--radius-md);
-      font-weight: 600;
-      font-size: 0.9rem;
-    }
-
-    .feedback svg {
-      width: 1.1rem;
-      height: 1.1rem;
-      flex-shrink: 0;
-      margin-top: 0.05rem;
-    }
-
-    .feedback--message {
-      background: var(--primary-soft);
-      border: 1px solid var(--primary-muted);
-      color: var(--primary-strong);
-    }
-
-    .feedback--error {
-      background: var(--danger-soft);
-      border: 1px solid #fecaca;
-      color: var(--danger);
-    }
-
-    /* ── Responsive ── */
-    @media (min-width: 680px) {
-      .role-grid {
-        grid-template-columns: repeat(3, 1fr);
-      }
-
-      .role-btn {
-        grid-template-columns: 1fr;
-        grid-template-rows: auto auto auto;
-        text-align: left;
-      }
-
-      .role-icon { grid-row: 1; font-size: 1.8rem; margin-bottom: 0.3rem; }
-    }
-
-    @media (min-width: 980px) {
-      .auth-shell {
-        grid-template-columns: 1fr 1fr;
-      }
-
-      .hero {
-        border-bottom: 0;
-        border-right: 1px solid var(--line);
-      }
-
-      .grid-two {
-        grid-template-columns: 1fr 1fr;
-      }
+    /* Responsive */
+    @media (max-width: 900px) {
+      .auth-shell { grid-template-columns: 1fr; border-radius: 0; min-height: 100vh; }
+      .hero-sidebar { display: none; }
+      .auth-layout { padding: 0; }
+      .form-panel { padding: 2rem; }
+      .profile-overlay { padding: 2rem; border-radius: 0; }
     }
   `
 })
+
 export class LoginPageComponent {
   protected readonly mode = signal<'login' | 'signup'>('login');
   protected readonly loadingAuth = signal(false);
