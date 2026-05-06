@@ -12,47 +12,78 @@ import { OrderMapComponent } from '../components/order-map.component';
   imports: [CommonModule, OrderMapComponent],
   template: `
     <article class="card">
-      <div class="card-title">
-        <h3>Mis pedidos</h3>
-        <button type="button" class="ghost" (click)="loadOrders()" [disabled]="loadingOrders">
-          {{ loadingOrders ? 'Cargando...' : 'Recargar' }}
+      <div class="card-header">
+        <div class="card-header__left">
+          <span class="step-badge">03</span>
+          <h3>Mis pedidos</h3>
+        </div>
+        <button type="button" class="btn btn--ghost btn--sm" (click)="loadOrders()" [disabled]="loadingOrders">
+          @if (loadingOrders) { <span class="spinner"></span> Cargando... }
+          @else { ↻ Recargar }
         </button>
       </div>
 
       @if (!orders.length) {
-        <p class="muted">Aun no tienes pedidos.</p>
+        <div class="empty-state">
+          <span class="empty-state__icon">📦</span>
+          <p>Aún no tienes pedidos. ¡Haz tu primer pedido!</p>
+        </div>
       } @else {
-        <ul class="list">
+        <ul class="order-list">
           @for (order of orders; track order.id) {
-            <li>
-              <div class="row">
-                <strong>#{{ order.id }} - {{ order.status }}</strong>
-                <span>Total: {{ order.total }}</span>
+            <li class="order-item">
+              <!-- Order header -->
+              <div class="order-item__header">
+                <div class="order-item__id">
+                  <span class="order-num">#{{ order.id }}</span>
+                  <span [class]="'status-pill ' + statusClass(order.status)">
+                    {{ order.status }}
+                  </span>
+                </div>
+                <span class="order-total">\${{ order.total }}</span>
               </div>
+
+              <!-- Driver location -->
               @if (hasDriverLocation(order)) {
-                <div class="location-box">
-                  <div>
-                    <strong>Ubicacion del repartidor</strong>
-                    <span>Actualizado {{ locationAge(order.location_updated_at) }}</span>
-                    @if (order.driver_accuracy !== null) {
-                      <span>Precision aprox. {{ order.driver_accuracy }} m</span>
-                    }
+                <div class="location-card">
+                  <div class="location-card__header">
+                    <span class="location-card__icon">📍</span>
+                    <div>
+                      <strong>Ubicación del repartidor</strong>
+                      <span class="location-card__meta">
+                        Actualizado {{ locationAge(order.location_updated_at) }}
+                        @if (order.driver_accuracy !== null) {
+                          · Precisión ~{{ order.driver_accuracy }} m
+                        }
+                      </span>
+                    </div>
+                    <span class="live-badge">EN VIVO</span>
                   </div>
-                  <div style="width: 100%; margin-top: 0.5rem;">
+                  <div class="map-wrapper">
                     <app-order-map [lat]="order.driver_latitude!" [lng]="order.driver_longitude!"></app-order-map>
                   </div>
                 </div>
               } @else if (isInTransit(order.status)) {
-                <p class="location-wait">Esperando ubicacion del repartidor.</p>
+                <div class="location-waiting">
+                  <span class="spinner spinner--sm"></span>
+                  <span>Esperando ubicación del repartidor...</span>
+                </div>
               }
+
+              <!-- Cancel button -->
               @if (canCancel(order.status)) {
                 <button
                   type="button"
-                  class="danger"
+                  class="btn btn--danger btn--sm"
                   (click)="cancelOrder(order.id)"
                   [disabled]="cancellingOrderId === order.id"
                 >
-                  {{ cancellingOrderId === order.id ? 'Cancelando...' : 'Cancelar pedido' }}
+                  @if (cancellingOrderId === order.id) {
+                    <span class="spinner spinner--white"></span>
+                    Cancelando...
+                  } @else {
+                    ✕ Cancelar pedido
+                  }
                 </button>
               }
             </li>
@@ -62,76 +93,254 @@ import { OrderMapComponent } from '../components/order-map.component';
     </article>
 
     @if (message) {
-      <p class="message">{{ message }}</p>
+      <div class="alert alert--success">✓ {{ message }}</div>
     }
     @if (errorMessage) {
-      <p class="error">{{ errorMessage }}</p>
+      <div class="alert alert--error">{{ errorMessage }}</div>
     }
   `,
   styles: `
     .card {
       border: 1px solid var(--line);
-      border-radius: var(--radius-md);
+      border-radius: var(--radius-lg);
       background: var(--panel);
       padding: var(--space-5);
-      margin: 0;
-      box-shadow: var(--shadow-sm);
-    }
-    .card-title {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: var(--space-3);
-    }
-    .card-title h3 { margin: 0; }
-    .list { list-style: none; margin: var(--space-4) 0 0; padding: 0; display: grid; gap: var(--space-3); }
-    .list li {
-      border: 1px solid var(--line);
-      border-radius: var(--radius-sm);
-      background: var(--surface);
-      padding: var(--space-3);
       display: grid;
-      gap: var(--space-2);
+      gap: var(--space-4);
     }
-    .row { display: flex; justify-content: space-between; gap: 0.5rem; align-items: center; }
-    .location-box {
-      border: 1px solid rgba(255, 91, 45, 0.24);
-      border-radius: var(--radius-sm);
-      background: linear-gradient(135deg, rgba(255, 91, 45, 0.12), rgba(255, 255, 255, 0.78));
-      padding: var(--space-3);
+
+    .card-header {
       display: flex;
-      justify-content: space-between;
       align-items: center;
+      justify-content: space-between;
       gap: var(--space-3);
       flex-wrap: wrap;
     }
-    .location-box div { display: grid; gap: 0.2rem; }
-    .location-box span,
-    .location-wait { color: var(--muted); font-size: 0.92rem; }
-    .location-wait { margin: 0; }
-    .map-link {
-      border-radius: 999px;
-      background: var(--primary);
-      color: #fff;
-      font-weight: 700;
-      padding: 0.58rem 0.92rem;
-      text-decoration: none;
-      white-space: nowrap;
+
+    .card-header__left {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
     }
-    button {
+
+    h3 { margin: 0; }
+
+    .step-badge {
+      width: 2rem;
+      height: 2rem;
+      border-radius: 50%;
+      background: linear-gradient(145deg, var(--primary) 0%, var(--primary-strong) 100%);
+      color: #fff;
+      font-size: 0.7rem;
+      font-weight: 800;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+      box-shadow: 0 3px 10px rgba(248, 92, 35, 0.25);
+    }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
       border: 0;
       border-radius: 999px;
-      padding: 0.58rem 0.92rem;
-      background: var(--primary);
-      color: #fff;
-      cursor: pointer;
+      padding: 0.55rem 1rem;
       font-weight: 700;
+      font-size: 0.88rem;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.18s ease;
     }
-    .ghost { background: var(--surface); border: 1px solid var(--line); color: var(--ink); font-weight: 600; }
-    .danger { background: var(--danger); }
-    .muted { color: var(--muted); margin-top: var(--space-2); }
-    .message { color: var(--primary); font-weight: 700; margin-top: var(--space-4); }
-    .error { color: var(--danger); font-weight: 700; margin-top: var(--space-4); }
+
+    .btn--ghost {
+      background: var(--surface-alt);
+      border: 1px solid var(--line);
+      color: var(--ink);
+    }
+
+    .btn--ghost:hover:not([disabled]) { border-color: var(--line-strong); }
+
+    .btn--danger {
+      background: var(--danger);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(220, 38, 38, 0.2);
+    }
+
+    .btn--danger:hover:not([disabled]) { box-shadow: 0 4px 14px rgba(220, 38, 38, 0.3); }
+
+    .btn--sm { padding: 0.38rem 0.8rem; font-size: 0.82rem; }
+    .btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+
+    /* ── Empty state ── */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--space-3);
+      padding: var(--space-7) 0;
+      text-align: center;
+    }
+
+    .empty-state__icon { font-size: 2.5rem; }
+    .empty-state p { margin: 0; color: var(--muted); font-size: 0.92rem; }
+
+    /* ── Order list ── */
+    .order-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      gap: var(--space-3);
+    }
+
+    .order-item {
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      background: var(--surface-alt);
+      padding: var(--space-4);
+      display: grid;
+      gap: var(--space-3);
+    }
+
+    .order-item__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-3);
+      flex-wrap: wrap;
+    }
+
+    .order-item__id {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+    }
+
+    .order-num {
+      font-weight: 800;
+      font-size: 0.95rem;
+      color: var(--ink);
+    }
+
+    .order-total {
+      font-weight: 800;
+      font-size: 1rem;
+      color: var(--ink);
+    }
+
+    /* ── Status pills ── */
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.18rem 0.65rem;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      border: 1px solid transparent;
+    }
+
+    .status-pill.pending    { background: #fffbeb; color: #92400e; border-color: #fde68a; }
+    .status-pill.accepted   { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
+    .status-pill.assigned   { background: #eff6ff; color: #1e3a8a; border-color: #bfdbfe; }
+    .status-pill.in-transit { background: #eef2ff; color: #3730a3; border-color: #c7d2fe; }
+    .status-pill.ready      { background: #f0fdf4; color: #166534; border-color: #bbf7d0; }
+    .status-pill.delivered  { background: #ecfdf5; color: #065f46; border-color: #6ee7b7; }
+    .status-pill.rejected   { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
+    .status-pill.cancelled  { background: #f8fafc; color: #475569; border-color: #cbd5e1; }
+    .status-pill.default    { background: var(--surface); color: var(--muted); border-color: var(--line); }
+
+    /* ── Location card ── */
+    .location-card {
+      border: 1px solid rgba(248, 92, 35, 0.22);
+      border-radius: var(--radius-sm);
+      background: linear-gradient(135deg, rgba(255, 240, 232, 0.8), rgba(255, 255, 255, 0.9));
+      overflow: hidden;
+    }
+
+    .location-card__header {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--space-3);
+      padding: var(--space-3) var(--space-3) 0;
+      flex-wrap: wrap;
+    }
+
+    .location-card__icon { font-size: 1.4rem; line-height: 1; flex-shrink: 0; }
+
+    .location-card__header > div {
+      flex: 1;
+      min-width: 0;
+      display: grid;
+      gap: 0.18rem;
+    }
+
+    .location-card__header strong { font-size: 0.9rem; font-weight: 700; color: var(--ink); }
+    .location-card__meta { font-size: 0.78rem; color: var(--muted); }
+
+    .live-badge {
+      flex-shrink: 0;
+      padding: 0.18rem 0.55rem;
+      border-radius: 999px;
+      background: rgba(248, 92, 35, 0.12);
+      border: 1px solid rgba(248, 92, 35, 0.25);
+      color: var(--primary-strong);
+      font-size: 0.64rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+    }
+
+    .map-wrapper {
+      margin-top: var(--space-3);
+      width: 100%;
+      border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+      overflow: hidden;
+    }
+
+    /* ── Location waiting ── */
+    .location-waiting {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      padding: var(--space-2) var(--space-3);
+      border-radius: var(--radius-xs);
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      color: #1e40af;
+      font-size: 0.86rem;
+      font-weight: 500;
+    }
+
+    /* ── Spinner ── */
+    .spinner {
+      width: 0.9rem;
+      height: 0.9rem;
+      border: 2px solid rgba(100, 60, 30, 0.2);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      flex-shrink: 0;
+    }
+
+    .spinner--sm { width: 0.8rem; height: 0.8rem; }
+    .spinner--white { border-color: rgba(255,255,255,0.35); border-top-color: #fff; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Alerts ── */
+    .alert {
+      padding: 0.75rem 1rem;
+      border-radius: var(--radius-sm);
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .alert--success { background: var(--success-soft); border: 1px solid #a7f3d0; color: #065f46; }
+    .alert--error { background: var(--danger-soft); border: 1px solid #fecaca; color: var(--danger); }
   `
 })
 export class ClientOrdersPageComponent implements OnDestroy {
@@ -153,6 +362,20 @@ export class ClientOrdersPageComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     this.eventSource?.close();
+  }
+
+  protected statusClass(status: string): string {
+    const map: Record<string, string> = {
+      PENDING: 'pending',
+      ACCEPTED: 'accepted',
+      ASSIGNED: 'assigned',
+      IN_TRANSIT: 'in-transit',
+      READY_FOR_PICKUP: 'ready',
+      DELIVERED: 'delivered',
+      REJECTED: 'rejected',
+      CANCELLED: 'cancelled'
+    };
+    return map[status] ?? 'default';
   }
 
   protected canCancel(status: string): boolean {
