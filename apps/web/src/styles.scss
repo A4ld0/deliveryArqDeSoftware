@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@500;600;700;800&display=swap');
 @import 'leaflet/dist/leaflet.css';
+
 *,
 *::before,
 *::after {
@@ -10,59 +11,104 @@ html,
 body {
   margin: 0;
   padding: 0;
+  scroll-behavior: smooth;
 }
 
 body {
   min-height: 100vh;
   font-size: 16px;
-  line-height: 1.5;
+  line-height: 1.6;
   font-family: 'Manrope', 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 h1,
 h2,
-h3 {
+h3,
+h4 {
   font-family: 'Sora', 'Manrope', sans-serif;
-  letter-spacing: 0.01em;
-  line-height: 1.25;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
 }
 
 h2 {
-  font-size: clamp(1.35rem, 1.6vw, 1.8rem);
+  font-size: clamp(1.4rem, 2vw, 1.85rem);
   margin: 0;
 }
 
 h3 {
-  font-size: clamp(1.05rem, 1.05vw, 1.24rem);
+  font-size: clamp(1.05rem, 1.1vw, 1.22rem);
   margin: 0;
 }
 
-.page {
-  box-shadow: 0 16px 30px rgb(173 89 33 / 9%);
-}
-
-.card {
-  box-shadow: 0 10px 20px rgb(154 85 33 / 6%);
-}
-
-button {
-  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
-}
-
-button:hover {
-  filter: saturate(1.06);
-}
-
-input:focus,
-select:focus,
-button:focus-visible {
-  outline: 2px solid rgb(255 107 53 / 38%);
-  outline-offset: 1px;
+:focus-visible {
+  outline: 2.5px solid rgba(248, 92, 35, 0.5);
+  outline-offset: 2px;
+  border-radius: 6px;
 }
 
 button,
 input,
 select,
 textarea {
-  min-height: 48px;
+  min-height: 44px;
+  font-family: inherit;
 }
+
+button {
+  transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.15s ease, opacity 0.15s ease;
+  cursor: pointer;
+}
+
+button:hover:not([disabled]) {
+  filter: brightness(1.04) saturate(1.06);
+}
+
+button[disabled],
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+.badge--pending    { background: #fffbeb; color: #92400e; border-color: #fde68a; }
+.badge--accepted   { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
+.badge--transit    { background: #eff6ff; color: #1e3a8a; border-color: #bfdbfe; }
+.badge--delivered  { background: #f0fdf4; color: #166534; border-color: #bbf7d0; }
+.badge--rejected   { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
+.badge--open       { background: #fff7ed; color: #9a3412; border-color: #fed7aa; }
+.badge--review     { background: #faf5ff; color: #6b21a8; border-color: #e9d5ff; }
+.badge--resolved   { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
+.badge--closed     { background: #f8fafc; color: #475569; border-color: #cbd5e1; }
+
+.page {
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.04),
+    0 20px 40px rgba(150, 80, 30, 0.08);
+}
+
+.card {
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.03),
+    0 8px 20px rgba(150, 80, 30, 0.06);
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(150, 100, 70, 0.22); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(150, 100, 70, 0.38); }
