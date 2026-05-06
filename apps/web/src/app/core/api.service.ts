@@ -143,6 +143,21 @@ export class ApiService {
     return response.order;
   }
 
+  async getOrderItems(orderId: number): Promise<Array<{
+    id: number;
+    product_id: number;
+    quantity: number;
+    unit_price: string;
+    line_total: string;
+    product_name: string;
+    image_url?: string;
+  }>> {
+    const response = await firstValueFrom(
+      this.http.get<{ items: any[] }>(`${environment.apiBaseUrl}/orders/${orderId}/items`)
+    );
+    return response.items;
+  }
+
   async updateOrderStatus(
     orderId: number,
     payload: {
@@ -262,5 +277,17 @@ export class ApiService {
       this.http.get<{ metrics: AdminMetrics }>(`${environment.apiBaseUrl}/admin/metrics`)
     );
     return response.metrics;
+  }
+
+  async getDriverStats(): Promise<{
+    total_delivered: number;
+    total_earnings: string;
+  }> {
+    const response = await firstValueFrom(
+      this.http.get<{ stats: { total_delivered: number; total_earnings: string } }>(
+        `${environment.apiBaseUrl}/deliveries/stats`
+      )
+    );
+    return response.stats;
   }
 }
