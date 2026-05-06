@@ -11,6 +11,18 @@ import type { UserRole } from '../core/models';
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
+    @if (message()) {
+      <div class="toast toast-success">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width:18px;height:18px"><polyline points="20 6 9 17 4 12"/></svg>
+        {{ message() }}
+      </div>
+    }
+    @if (error()) {
+      <div class="toast toast-error">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="width:18px;height:18px"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        {{ error() }}
+      </div>
+    }
     <section class="profile-container anim-fade-in">
       <div class="profile-card">
         <header class="profile-header">
@@ -78,8 +90,6 @@ import type { UserRole } from '../core/models';
               </button>
             </div>
 
-            @if (message()) { <div class="alert alert-success">{{ message() }}</div> }
-            @if (error()) { <div class="alert alert-error">{{ error() }}</div> }
           </form>
         }
       </div>
@@ -118,9 +128,17 @@ import type { UserRole } from '../core/models';
 
     .btn-logout-mobile { display: none; background: transparent; border: 1.5px solid #fee2e2; color: #b91c1c; padding: 1rem; border-radius: 99px; font-weight: 800; cursor: pointer; }
 
-    .alert { padding: 1.2rem; border-radius: 18px; font-weight: 750; font-size: 0.9rem; text-align: center; }
-    .alert-success { background: #f0fdf4; color: #15803d; border: 1.5px solid #bbf7d0; }
-    .alert-error { background: #fef2f2; color: #b91c1c; border: 1.5px solid #fee2e2; }
+    .toast {
+      position: fixed; top: 1.5rem; left: 50%; transform: translateX(-50%);
+      z-index: 9999; padding: 0.85rem 1.6rem; border-radius: 99px;
+      font-weight: 800; font-size: 0.9rem; white-space: nowrap;
+      display: flex; align-items: center; gap: 0.6rem;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+      animation: toastIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .toast-success { background: #16a34a; color: white; }
+    .toast-error { background: #dc2626; color: white; }
+    @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(-16px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
 
     .loading-state { text-align: center; padding: 4rem; display: grid; place-items: center; gap: 1rem; color: var(--muted); font-weight: 600; }
     .spinner { width: 2.2rem; height: 2.2rem; border: 3px solid rgba(0,0,0,0.05); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }

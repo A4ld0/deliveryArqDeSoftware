@@ -68,10 +68,17 @@ deliveriesRouter.get(
         o.id,
         o.status,
         o.restaurant_id,
+        r.name  AS restaurant_name,
+        r.address AS restaurant_address,
+        r.latitude::float8  AS restaurant_latitude,
+        r.longitude::float8 AS restaurant_longitude,
         o.total::text AS total,
         o.delivery_address,
+        o.delivery_latitude::float8  AS delivery_latitude,
+        o.delivery_longitude::float8 AS delivery_longitude,
         o.created_at
       FROM orders o
+      JOIN restaurants r ON r.id = o.restaurant_id
       LEFT JOIN deliveries d ON d.order_id = o.id
       WHERE o.status = 'READY_FOR_PICKUP'
         AND d.order_id IS NULL
@@ -326,5 +333,30 @@ deliveriesRouter.patch(
 
     await safePublishOrderStatusChanged(orderId, nextStatus);
     response.json({ delivery: updated });
+  })
+);
+deliveriesRouter.get(
+  "/stats",
+  requireAuth,
+  requireRole(["driver"]),
+  asyncHandler(async (request, response) => {
+    const driverId = request.currentUser!.authUserId;
+
+    const stats = await query<{
+      total_delivered: number;
+      total_earnings: string;
+    }>(
+      `
+      SELECT
+        COUNT(*)::int AS total_delivered,
+        COALESCE(SUM(o.delivery_fee + o.tip_amount), 0)::text AS total_earnings
+      FROM deliveries d
+      JOIN orders o ON o.id = d.order_id
+      WHERE d.driver_id = $1 AND d.status = 'DELIVERED'
+      `,
+      [driverId]
+    );
+
+    response.json({ stats: stats[0] });
   })
 );

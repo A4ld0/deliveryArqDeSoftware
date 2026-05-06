@@ -18,6 +18,9 @@ import { publishOrderStatusChanged } from "../../realtime/order-events.js";
 const CreateOrderSchema = z.object({
   restaurantId: z.coerce.number().int().positive(),
   deliveryAddress: z.string().min(6).max(250),
+  deliveryLatitude: z.coerce.number().min(-90).max(90).optional().nullable(),
+  deliveryLongitude: z.coerce.number().min(-180).max(180).optional().nullable(),
+  tipAmount: z.coerce.number().min(0).optional().default(0),
   items: z
     .array(
       z.object({
@@ -167,7 +170,7 @@ async function createOrderInTransaction(
     subtotal += unitPrice * item.quantity;
   }
 
-  const deliveryFee = 0;
+  const deliveryFee = 25;
   const total = subtotal + deliveryFee;
 
   const orderResult = await client.query<{
@@ -186,10 +189,13 @@ async function createOrderInTransaction(
       status,
       subtotal,
       delivery_fee,
+      tip_amount,
       total,
-      delivery_address
+      delivery_address,
+      delivery_latitude,
+      delivery_longitude
     )
-    VALUES ($1, $2, 'PENDING', $3, $4, $5, $6)
+    VALUES ($1, $2, 'PENDING', $3, $4, $5, $6, $7, $8, $9)
     RETURNING id, status, subtotal::text, delivery_fee::text, total::text, created_at, updated_at
     `,
     [
@@ -197,8 +203,11 @@ async function createOrderInTransaction(
       payload.restaurantId,
       subtotal.toFixed(2),
       deliveryFee.toFixed(2),
+      payload.tipAmount.toFixed(2),
       total.toFixed(2),
-      payload.deliveryAddress
+      payload.deliveryAddress,
+      payload.deliveryLatitude,
+      payload.deliveryLongitude
     ]
   );
 
@@ -291,16 +300,31 @@ ordersRouter.get(
         o.id,
         o.status,
         o.restaurant_id,
+        r.name AS restaurant_name,
+        r.address AS restaurant_address,
+        r.latitude::float8 AS restaurant_latitude,
+        r.longitude::float8 AS restaurant_longitude,
         o.customer_id,
+        o.delivery_address,
+        o.delivery_latitude::float8 AS delivery_latitude,
+        o.delivery_longitude::float8 AS delivery_longitude,
         o.total::text AS total,
+        o.delivery_fee::text AS delivery_fee,
+        o.tip_amount::text AS tip_amount,
         o.created_at,
         o.updated_at,
         d.driver_latitude::float8 AS driver_latitude,
         d.driver_longitude::float8 AS driver_longitude,
         d.driver_accuracy::float8 AS driver_accuracy,
-        d.location_updated_at
+        d.location_updated_at,
+        u.full_name AS driver_name,
+        c.full_name AS customer_name,
+        c.phone AS customer_phone
       FROM orders o
+      JOIN restaurants r ON r.id = o.restaurant_id
       LEFT JOIN deliveries d ON d.order_id = o.id
+      LEFT JOIN users u ON u.auth_user_id = d.driver_id
+      LEFT JOIN users c ON c.auth_user_id = o.customer_id
     `;
     const params: unknown[] = [];
 
@@ -309,7 +333,6 @@ ordersRouter.get(
       params.push(user.authUserId);
     } else if (user.role === "restaurant") {
       sql += `
-        JOIN restaurants r ON r.id = o.restaurant_id
         WHERE r.owner_user_id = $1
         ORDER BY o.created_at DESC LIMIT 100
       `;
@@ -405,5 +428,32 @@ ordersRouter.patch(
 
     await safePublishOrderStatusChanged(updatedRows.id, updatedRows.status);
     response.json({ order: updatedRows });
+  })
+);
+ordersRouter.get(
+  "/:orderId/items",
+  requireAuth,
+  asyncHandler(async (request, response) => {
+    const orderId = Number.parseInt(request.params.orderId, 10);
+    if (Number.isNaN(orderId)) throw new HttpError(400, "orderId must be numeric.");
+
+    const items = await query(
+      `
+      SELECT
+        oi.id,
+        oi.product_id,
+        oi.quantity,
+        oi.unit_price::text AS unit_price,
+        oi.line_total::text AS line_total,
+        p.name AS product_name,
+        p.image_url
+      FROM order_items oi
+      JOIN products p ON p.id = oi.product_id
+      WHERE oi.order_id = $1
+      `,
+      [orderId]
+    );
+
+    response.json({ items });
   })
 );

@@ -1,15 +1,16 @@
 import { CommonModule } from '@angular/common';
-import { HttpErrorResponse } from '@angular/common/http';
+import { OrderMapComponent } from '../components/order-map.component';
 import { Component, OnDestroy, inject, computed, signal } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { ApiService } from '../core/api.service';
 import { ProfileService } from '../core/profile.service';
+import { SessionService } from '../core/session.service';
 import type { DeliveryAvailable, OrderSummary } from '../core/models';
 
 @Component({
   selector: 'app-driver-dashboard-page',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, OrderMapComponent],
   template: `
     <div class="page anim-fade-in">
       <!-- HEADER -->
@@ -89,12 +90,21 @@ import type { DeliveryAvailable, OrderSummary } from '../core/models';
               @for (item of available(); track item.id) {
                 <li class="delivery-card anim-slide-up">
                   <div class="delivery-card__header">
-                    <span class="order-num">#{{ item.id }}</span>
+                    <span class="order-num">#{{ item.id }} — {{ item.restaurant_name }}</span>
                     <span class="delivery-total">\${{ item.total }}</span>
                   </div>
                   <div class="delivery-card__address">
-                    📍 {{ item.delivery_address }}
+                    🏠 {{ item.delivery_address }}
                   </div>
+                  @if (hasCoords(item.restaurant_latitude) || hasCoords(item.delivery_latitude)) {
+                    <app-order-map
+                      height="180px"
+                      [restaurantLat]="item.restaurant_latitude"
+                      [restaurantLng]="item.restaurant_longitude"
+                      [deliveryLat]="item.delivery_latitude"
+                      [deliveryLng]="item.delivery_longitude"
+                    ></app-order-map>
+                  }
                   <button class="btn btn--primary btn--full" (click)="acceptDelivery(item.id)" [disabled]="takingOrderId === item.id">
                     @if (takingOrderId === item.id) { <span class="spinner spinner--white"></span> } @else { Aceptar Entrega }
                   </button>
@@ -161,10 +171,44 @@ import type { DeliveryAvailable, OrderSummary } from '../core/models';
                     <div class="detail-text">
                       <small>Punto de Entrega (Cliente)</small>
                       <strong>{{ order.customer_name || 'Cliente' }}</strong>
-                      <span>{{ order.delivery_address }}</span>
+                      @if (!isHistory() && order.customer_phone) {
+                        <a [href]="'tel:' + order.customer_phone" class="phone-link">📞 {{ order.customer_phone }}</a>
+                      }
                     </div>
+                    @if (!isHistory()) {
+                      @if (googleMapsUrl(order.delivery_latitude, order.delivery_longitude); as mapsUrl) {
+                        <a [href]="mapsUrl" target="_blank" rel="noopener" class="maps-btn" title="Abrir en Google Maps">🗺️</a>
+                      }
+                    }
                   </div>
                 </div>
+
+                <!-- ORDER MAP -->
+                @if (order.restaurant_latitude || order.delivery_latitude) {
+                  <div class="active-tracking" [class.active-tracking--history]="isHistory()">
+                    <header class="tracking-header">
+                      @if (!isHistory()) { <span class="pulse-dot"></span> }
+                      @else { <span style="font-size:1rem">🗺️</span> }
+                      <strong>{{ isHistory() ? 'Ruta completada' : 'Mapa de Ruta y Navegación' }}</strong>
+                    </header>
+                    <app-order-map
+                      height="240px"
+                      [driverLat]="isHistory() ? null : order.driver_latitude"
+                      [driverLng]="isHistory() ? null : order.driver_longitude"
+                      [restaurantLat]="order.restaurant_latitude"
+                      [restaurantLng]="order.restaurant_longitude"
+                      [deliveryLat]="order.delivery_latitude"
+                      [deliveryLng]="order.delivery_longitude"
+                    ></app-order-map>
+                  </div>
+                }
+
+                <!-- TIP DISPLAY (if any) -->
+                @if (order.tip_amount && order.tip_amount !== '0.00') {
+                  <div class="tip-banner anim-slide-up">
+                    <span>✨ Propina del cliente: <strong>\${{ order.tip_amount }}</strong></span>
+                  </div>
+                }
 
                 @if (!isHistory() && canDeliver(order.status)) {
                   <div class="delivery-proof-zone anim-slide-down">
@@ -227,8 +271,15 @@ import type { DeliveryAvailable, OrderSummary } from '../core/models';
     .page { display: grid; gap: 2rem; padding: 1.5rem; }
     .page-header { display: flex; align-items: center; gap: 1.5rem; }
     .page-header__icon { font-size: 2.5rem; }
+    .page-header__text { flex: 1; }
     .page-header h2 { font-size: 1.8rem; font-weight: 900; margin: 0; }
     .page-header p { margin: 0; color: var(--muted); }
+    .logout-btn { flex-shrink: 0; }
+
+    .phone-link { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.82rem; font-weight: 700; color: var(--primary); text-decoration: none; margin-top: 0.25rem; }
+    .phone-link:hover { text-decoration: underline; }
+    .maps-btn { width: 36px; height: 36px; border-radius: 12px; background: #eff6ff; display: grid; place-items: center; font-size: 1.1rem; text-decoration: none; flex-shrink: 0; border: 1.5px solid #bfdbfe; transition: 0.15s; }
+    .maps-btn:hover { background: #dbeafe; transform: scale(1.1); }
 
     .gps-card { border: 1.5px solid var(--line); border-radius: 28px; background: white; padding: 1.5rem 2rem; display: flex; align-items: center; justify-content: space-between; }
     .gps-card__left { display: flex; align-items: center; gap: 1.5rem; }
@@ -273,7 +324,16 @@ import type { DeliveryAvailable, OrderSummary } from '../core/models';
     .detail-text { display: grid; }
     .detail-text small { font-size: 0.65rem; color: var(--muted); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.2rem; }
     .detail-text strong { font-size: 0.95rem; color: var(--ink); }
-    .detail-text span { font-size: 0.85rem; color: var(--muted); }
+    .detail-text span { font-size: 0.85rem; color: var(--muted); font-weight: 600; }
+
+    .active-tracking { margin: 1.5rem 0; border: 2px solid var(--primary-soft); border-radius: 24px; overflow: hidden; background: white; }
+    .tracking-header { padding: 1rem 1.5rem; background: var(--primary-soft); display: flex; align-items: center; gap: 0.8rem; }
+    .tracking-header strong { font-size: 0.9rem; color: var(--primary-strong); font-weight: 850; }
+    .pulse-dot { width: 10px; height: 10px; background: var(--primary); border-radius: 50%; animation: pulse-anim 1.5s infinite; }
+    @keyframes pulse-anim { 0% { transform: scale(0.8); opacity: 0.8; } 50% { transform: scale(1.2); opacity: 1; } 100% { transform: scale(0.8); opacity: 0.8; } }
+
+    .tip-banner { background: #f0fdf4; border: 2px dashed #22c55e; padding: 1rem; border-radius: 20px; text-align: center; color: #166534; font-size: 0.95rem; margin-top: 1rem; }
+    .tip-banner strong { font-weight: 900; }
 
     .delivery-proof-zone { padding: 1.5rem; border: 2px dashed var(--line); border-radius: 20px; background: var(--bg-app); cursor: pointer; text-align: center; }
     .proof-icon { font-size: 2rem; opacity: 0.4; }
@@ -329,8 +389,10 @@ export class DriverDashboardPageComponent implements OnDestroy {
   private lastLocationSentAt = 0;
 
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly apiService = inject(ApiService);
   private readonly profileService = inject(ProfileService);
+  private readonly sessionService = inject(SessionService);
 
   protected readonly profile = this.profileService.profile;
   protected readonly isHistory = computed(() => this.route.snapshot.url[0]?.path === 'history');
@@ -444,7 +506,7 @@ export class DriverDashboardPageComponent implements OnDestroy {
     }
   }
 
-  protected async onFileSelected(event: any, orderId: number) {
+  protected async onFileSelected(event: any, _orderId: number) {
     const file = event.target.files[0];
     if (!file) return;
     this.message = `Imagen "${file.name}" cargada localmente (Preparado para S3)`;
@@ -514,6 +576,20 @@ export class DriverDashboardPageComponent implements OnDestroy {
     return map[status.toUpperCase()] ?? 'default';
   }
 
+  protected hasCoords(v: number | null | undefined): boolean {
+    return Number.isFinite(Number(v));
+  }
+
   protected canStartTransit(status: string): boolean { return status === 'READY_FOR_PICKUP' || status === 'ACCEPTED' || status === 'ASSIGNED'; }
   protected canDeliver(status: string): boolean { return status === 'IN_TRANSIT'; }
+
+  protected googleMapsUrl(lat: number | null | undefined, lng: number | null | undefined): string | null {
+    if (!lat || !lng) return null;
+    return `https://maps.google.com/?q=${lat},${lng}`;
+  }
+
+  protected async logout(): Promise<void> {
+    await this.sessionService.signOut();
+    await this.router.navigateByUrl('/auth/login');
+  }
 }

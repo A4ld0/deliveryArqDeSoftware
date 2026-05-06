@@ -83,6 +83,8 @@ export class ProfileService {
     role: UserRole;
     phone?: string;
     address?: string;
+    latitude?: number | null;
+    longitude?: number | null;
   }): Promise<void> {
     await firstValueFrom(
       this.http.post<UpsertProfileResponse>(`${environment.apiBaseUrl}/auth/profile`, payload)

@@ -1,5 +1,4 @@
 import { CommonModule } from '@angular/common';
-import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnDestroy, inject, signal } from '@angular/core';
 import { ApiService } from '../core/api.service';
 import type { OrderLocationEvent, OrderStatusEvent, OrderSummary } from '../core/models';
@@ -107,22 +106,34 @@ const STATUS_INDEX: Record<string, number> = {
                 </div>
               }
 
-              <!-- MAP SECTION -->
-              @if (hasDriverLocation(order) && isActive(order.status)) {
+              <!-- MAP SECTION — active orders show driver + live header; past orders show static restaurant→house -->
+              @if (hasMapData(order)) {
                 <div class="map-section anim-slide-up">
-                  <div class="map-header">
-                    <span class="live-pulse"></span>
-                    <strong>Repartidor en movimiento</strong>
-                    <span class="update-time">Actualizado {{ locationAge(order.location_updated_at) }}</span>
-                  </div>
+                  @if (isActive(order.status)) {
+                    <div class="map-header">
+                      <span class="map-dot" [class]="mapDotClass(order.status)"></span>
+                      <strong>{{ mapLabel(order.status) }}</strong>
+                      @if (hasDriverLocation(order)) {
+                        <span class="update-time">Actualizado {{ locationAge(order.location_updated_at) }}</span>
+                      }
+                    </div>
+                  } @else {
+                    <div class="map-header map-header--past">
+                      <span style="font-size:1rem">🗺️</span>
+                      <strong>Ruta del pedido</strong>
+                    </div>
+                  }
                   <div class="map-container">
-                    <app-order-map [lat]="order.driver_latitude!" [lng]="order.driver_longitude!"></app-order-map>
+                    <app-order-map
+                      [driverLat]="isActive(order.status) ? order.driver_latitude : null"
+                      [driverLng]="isActive(order.status) ? order.driver_longitude : null"
+                      [restaurantLat]="order.restaurant_latitude"
+                      [restaurantLng]="order.restaurant_longitude"
+                      [deliveryLat]="order.delivery_latitude"
+                      [deliveryLng]="order.delivery_longitude"
+                      [deliveryAddress]="order.delivery_address"
+                    ></app-order-map>
                   </div>
-                </div>
-              } @else if (order.status === 'IN_TRANSIT') {
-                <div class="map-placeholder">
-                  <span class="loader loader--sm"></span>
-                  Conectando con el GPS del repartidor...
                 </div>
               }
 
@@ -238,12 +249,15 @@ const STATUS_INDEX: Record<string, number> = {
     /* ── MAP SECTION ── */
     .map-section { background: var(--bg-app); border-radius: 24px; overflow: hidden; border: 1.5px solid var(--line); margin-bottom: 2rem; }
     .map-header { display: flex; align-items: center; gap: 0.8rem; padding: 1rem 1.5rem; font-size: 0.9rem; }
-    .live-pulse { width: 8px; height: 8px; background: #22c55e; border-radius: 50%; box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); animation: pulse 1.5s infinite; }
-    @keyframes pulse { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); } }
+    .map-header--past { background: var(--bg-app); color: var(--muted); }
+    .map-header--past strong { color: var(--muted); font-weight: 700; }
+    .map-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+    .dot--live     { background: #22c55e; animation: pulse 1.5s infinite; }
+    .dot--assigned { background: #f59e0b; }
+    .dot--static   { background: #94a3b8; }
+    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(34,197,94,.7); } 70% { box-shadow: 0 0 0 8px rgba(34,197,94,0); } 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); } }
     .update-time { margin-left: auto; color: var(--muted); font-size: 0.8rem; font-weight: 500; }
     .map-container { height: 250px; }
-
-    .map-placeholder { padding: 3rem; background: #eff6ff; border: 2px dashed #bfdbfe; border-radius: 24px; color: #1e40af; font-weight: 600; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; gap: 1rem; margin-bottom: 2rem; }
 
     /* ── ITEMS SECTION ── */
     .items-section { border-top: 1.5px solid var(--line); border-bottom: 1.5px solid var(--line); margin: 0 -2rem; padding: 0.5rem 2rem; background: var(--bg-app); }
@@ -273,8 +287,10 @@ const STATUS_INDEX: Record<string, number> = {
 
     .anim-fade-in { animation: fadeIn 0.4s ease-out; }
     .anim-slide-up { animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
+    .anim-slide-down { animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    @keyframes slideDown { from { transform: translateY(-8px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
   `
 })
 export class ClientOrdersPageComponent implements OnDestroy {
@@ -291,7 +307,7 @@ export class ClientOrdersPageComponent implements OnDestroy {
   private eventSource: EventSource | null = null;
 
   constructor() {
-    void this.loadOrders();
+    void this.boot();
   }
 
   async toggleItems(orderId: number) {
@@ -343,7 +359,31 @@ export class ClientOrdersPageComponent implements OnDestroy {
   }
 
   protected hasDriverLocation(order: OrderSummary): boolean {
-    return typeof order.driver_latitude === 'number' && typeof order.driver_longitude === 'number';
+    return Number.isFinite(Number(order.driver_latitude)) && Number.isFinite(Number(order.driver_longitude));
+  }
+
+  protected hasMapData(order: OrderSummary): boolean {
+    return (
+      (Number.isFinite(Number(order.restaurant_latitude)) && Number.isFinite(Number(order.restaurant_longitude))) ||
+      (Number.isFinite(Number(order.delivery_latitude)) && Number.isFinite(Number(order.delivery_longitude)))
+    );
+  }
+
+  protected mapLabel(status: string): string {
+    const map: Record<string, string> = {
+      PENDING:          'Esperando confirmación del negocio',
+      ACCEPTED:         'Preparando tu pedido',
+      READY_FOR_PICKUP: 'Listo — esperando repartidor',
+      ASSIGNED:         'Repartidor en camino al negocio',
+      IN_TRANSIT:       'En camino a tu domicilio 🏠',
+    };
+    return map[status] ?? 'Rastreando pedido';
+  }
+
+  protected mapDotClass(status: string): string {
+    if (status === 'IN_TRANSIT') return 'dot--live';
+    if (status === 'ASSIGNED')   return 'dot--assigned';
+    return 'dot--static';
   }
 
   protected locationAge(value: string | null): string {

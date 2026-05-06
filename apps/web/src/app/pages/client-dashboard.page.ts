@@ -1,7 +1,9 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
+import { OrderMapComponent } from '../components/order-map.component';
 import { Component, OnDestroy, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { LocationPickerComponent } from '../components/location-picker.component';
 import { RouterLink } from '@angular/router';
 import { ApiService } from '../core/api.service';
 import { ClientOrderStateService } from '../core/client-order-state.service';
@@ -20,7 +22,7 @@ type ViewMode = 'restaurants' | 'menu' | 'checkout';
 @Component({
   selector: 'app-client-dashboard-page',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, LocationPickerComponent, OrderMapComponent],
   template: `
     <section class="dashboard">
       <header class="dashboard__header">
@@ -118,7 +120,7 @@ type ViewMode = 'restaurants' | 'menu' | 'checkout';
           }
 
           @if (viewMode === 'checkout') {
-            <div class="checkout-view">
+            <form (submit)="checkout($event)" class="checkout-view">
               <ul class="cart-list">
                 @for (item of cart(); track item.productId) {
                   <li class="cart-item">
@@ -127,10 +129,10 @@ type ViewMode = 'restaurants' | 'menu' | 'checkout';
                       <span>\${{ item.price.toFixed(2) }}</span>
                     </div>
                     <div class="item-controls">
-                      <button (click)="changeQty(item.productId, -1)">-</button>
+                      <button type="button" (click)="changeQty(item.productId, -1)">-</button>
                       <span>{{ item.quantity }}</span>
-                      <button (click)="changeQty(item.productId, 1)">+</button>
-                      <button class="remove" (click)="removeFromCart(item.productId)">Eliminar</button>
+                      <button type="button" (click)="changeQty(item.productId, 1)">+</button>
+                      <button type="button" class="remove" (click)="removeFromCart(item.productId)">Eliminar</button>
                     </div>
                   </li>
                 }
@@ -138,31 +140,59 @@ type ViewMode = 'restaurants' | 'menu' | 'checkout';
 
               <div class="checkout-footer">
                 <div class="total-row">
-                  <span>Total a pagar:</span>
-                  <strong>\${{ cartSubtotal().toFixed(2) }}</strong>
+                  <span>Subtotal:</span>
+                  <span>\${{ cartSubtotal().toFixed(2) }}</span>
                 </div>
 
-                <form class="checkout-form" (submit)="checkout($event)">
-                  <div class="form-group">
-                    <label>Dirección de entrega</label>
-                    <input type="text" [(ngModel)]="deliveryAddress" name="deliveryAddress" placeholder="Ingresa tu dirección real" required />
+                <div class="form-group tip-section">
+                  <label>Agregar Propina para el Repartidor</label>
+                  <div class="tip-options">
+                    @for (amount of [10, 20, 50, 100]; track amount) {
+                      <button type="button" class="tip-btn" [class.active]="tipAmount === amount" (click)="tipAmount = amount">
+                        \${{ amount }}
+                      </button>
+                    }
+                    <input type="number" [(ngModel)]="tipAmount" name="customTip" placeholder="Otro" />
                   </div>
-                  <div class="form-group">
-                    <label>Método de Pago</label>
-                    <select [(ngModel)]="paymentMethod" name="paymentMethod">
-                      <option value="SIMULATED_CARD">💳 Tarjeta (Simulado)</option>
-                      <option value="SIMULATED_CASH">💵 Efectivo (Simulado)</option>
-                    </select>
+                </div>
+
+                <div class="total-row total-row--final">
+                  <span>Total Final:</span>
+                  <strong>\${{ (cartSubtotal() + tipAmount).toFixed(2) }}</strong>
+                </div>
+
+                <div class="checkout-grid">
+                  <div class="checkout-details">
+                    <div class="form-group">
+                      <label>Dirección / Referencia de Entrega</label>
+                      <input type="text" [(ngModel)]="deliveryAddress" name="deliveryAddress" placeholder="Ej: Calle 123, Casa azul, Portón blanco" required />
+                    </div>
+                    <div class="form-group">
+                      <label>Método de Pago</label>
+                      <select [(ngModel)]="paymentMethod" name="paymentMethod">
+                        <option value="SIMULATED_CARD">💳 Tarjeta (Simulado)</option>
+                        <option value="SIMULATED_CASH">💵 Efectivo (Simulado)</option>
+                      </select>
+                    </div>
+                    <div class="form-actions">
+                      <button type="submit" class="btn-primary-auth" [disabled]="placingOrder">
+                        {{ placingOrder ? 'Procesando...' : 'Confirmar y Pagar Pedido' }}
+                      </button>
+                      <button type="button" class="ghost-btn" (click)="clearCart()">Vaciar Carrito</button>
+                    </div>
                   </div>
-                  <div class="form-actions">
-                    <button type="submit" class="btn-primary-auth" [disabled]="placingOrder">
-                      {{ placingOrder ? 'Procesando...' : 'Confirmar Pedido' }}
-                    </button>
-                    <button type="button" class="ghost-btn" (click)="clearCart()">Vaciar Carrito</button>
+
+                  <div class="checkout-location">
+                    <label>Ajusta el Pin de Entrega</label>
+                    <app-location-picker 
+                      [lat]="deliveryLat" 
+                      [lng]="deliveryLng" 
+                      (locationChange)="onLocationChange($event)"
+                    ></app-location-picker>
                   </div>
-                </form>
+                </div>
               </div>
-            </div>
+            </form>
           }
         </article>
       }
@@ -193,6 +223,24 @@ type ViewMode = 'restaurants' | 'menu' | 'checkout';
                       <button (click)="cancelOrder(o.id)" [disabled]="cancellingOrderId === o.id">Cancelar</button>
                     }
                   </div>
+
+                  @if (['ACCEPTED', 'READY_FOR_PICKUP', 'ASSIGNED', 'IN_TRANSIT'].includes(o.status.toUpperCase())) {
+                    <div class="active-tracking">
+                      <header class="tracking-header">
+                        <span class="pulse-dot"></span>
+                        <strong>Sigue tu pedido en tiempo real</strong>
+                      </header>
+                      <app-order-map
+                        height="300px"
+                        [driverLat]="o.driver_latitude"
+                        [driverLng]="o.driver_longitude"
+                        [restaurantLat]="o.restaurant_latitude"
+                        [restaurantLng]="o.restaurant_longitude"
+                        [deliveryLat]="o.delivery_latitude"
+                        [deliveryLng]="o.delivery_longitude"
+                      ></app-order-map>
+                    </div>
+                  }
                 </div>
               }
             }
@@ -297,10 +345,29 @@ type ViewMode = 'restaurants' | 'menu' | 'checkout';
 
     .checkout-footer { margin-top: 2rem; padding-top: 1.5rem; border-top: 1.5px dashed var(--line); }
     .total-row { display: flex; justify-content: space-between; font-size: 1.2rem; margin-bottom: 2rem; }
-    .checkout-form { display: grid; gap: 1.5rem; }
-    .form-group { display: grid; gap: 0.5rem; }
-    .form-group label { font-weight: 700; font-size: 0.9rem; }
-    .form-group input, .form-group select { padding: 0.8rem; border-radius: 12px; border: 1.5px solid var(--line); background: white; font-family: inherit; }
+    .checkout-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 3rem; margin-top: 2rem; }
+    @media (max-width: 900px) { .checkout-grid { grid-template-columns: 1fr; } }
+    
+    .checkout-details { display: grid; gap: 1.8rem; }
+    .checkout-location { display: grid; gap: 0.8rem; }
+    .checkout-location label { font-weight: 800; font-size: 0.85rem; text-transform: uppercase; color: var(--muted); }
+
+    .form-group input, .form-group select { padding: 1rem 1.2rem; border-radius: 16px; border: 2px solid var(--line); background: var(--bg-app); font-family: inherit; font-weight: 600; font-size: 1rem; }
+    .form-group input:focus { border-color: var(--primary); background: white; outline: none; }
+    
+    .active-tracking { margin-top: 1.5rem; border: 2px solid var(--primary-soft); border-radius: 24px; overflow: hidden; background: white; }
+    .tracking-header { padding: 1rem 1.5rem; background: var(--primary-soft); display: flex; align-items: center; gap: 0.8rem; }
+    .tracking-header strong { font-size: 0.9rem; color: var(--primary-strong); font-weight: 850; }
+    .pulse-dot { width: 10px; height: 10px; background: var(--primary); border-radius: 50%; animation: pulse-anim 1.5s infinite; }
+    @keyframes pulse-anim { 0% { transform: scale(0.8); opacity: 0.8; } 50% { transform: scale(1.2); opacity: 1; } 100% { transform: scale(0.8); opacity: 0.8; } }
+
+    .tip-section { margin-top: 1rem; }
+    .tip-options { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+    .tip-btn { padding: 0.5rem 1rem; border-radius: 99px; border: 1.5px solid var(--line); background: white; font-weight: 700; cursor: pointer; transition: 0.2s; }
+    .tip-btn.active { border-color: var(--primary); background: var(--primary-soft); color: var(--primary-strong); }
+    .tip-options input { width: 100px; padding: 0.4rem 0.8rem; }
+    
+    .total-row--final { border-top: 2px solid var(--line); padding-top: 1rem; margin-top: 0.5rem; color: var(--primary-strong); }
 
     /* Secondary sections */
     .dashboard__secondary { display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
@@ -342,6 +409,9 @@ export class ClientDashboardPageComponent implements OnDestroy {
   protected products: Product[] = [];
 
   protected deliveryAddress = '';
+  protected deliveryLat = 20.6597;
+  protected deliveryLng = -103.3496;
+  protected tipAmount = 0;
   protected paymentMethod = 'SIMULATED_CARD';
 
   protected orders: OrderSummary[] = [];
@@ -444,6 +514,11 @@ export class ClientDashboardPageComponent implements OnDestroy {
     this.orderState.clearCart();
   }
 
+  protected onLocationChange(loc: { lat: number; lng: number }): void {
+    this.deliveryLat = loc.lat;
+    this.deliveryLng = loc.lng;
+  }
+
   protected async checkout(event: Event): Promise<void> {
     event.preventDefault();
     this.errorMessage = '';
@@ -457,6 +532,9 @@ export class ClientDashboardPageComponent implements OnDestroy {
       const order = await this.apiService.createOrder({
         restaurantId,
         deliveryAddress: this.deliveryAddress.trim(),
+        deliveryLatitude: this.deliveryLat,
+        deliveryLongitude: this.deliveryLng,
+        tipAmount: this.tipAmount,
         paymentMethod: this.paymentMethod,
         items: this.cart().map((line) => ({
           productId: line.productId,
@@ -467,6 +545,7 @@ export class ClientDashboardPageComponent implements OnDestroy {
       this.message = `¡Pedido #${order.id} creado con éxito!`;
       this.orderState.clearCart();
       this.deliveryAddress = '';
+      this.tipAmount = 0;
       this.viewMode = 'restaurants';
       await this.loadOrders();
     } catch (error) {
@@ -551,6 +630,16 @@ export class ClientDashboardPageComponent implements OnDestroy {
   private async boot(): Promise<void> {
     await Promise.all([this.loadRestaurants(), this.loadOrders(), this.loadIncidents()]);
     
+    // Set default delivery location from profile if available
+    const profile = this.profile();
+    if (profile?.latitude && profile?.longitude) {
+      this.deliveryLat = profile.latitude;
+      this.deliveryLng = profile.longitude;
+    }
+    if (profile?.address) {
+      this.deliveryAddress = profile.address;
+    }
+
     if (this.selectedRestaurantId()) {
       this.viewMode = 'menu';
       await this.loadProducts(this.selectedRestaurantId()!);

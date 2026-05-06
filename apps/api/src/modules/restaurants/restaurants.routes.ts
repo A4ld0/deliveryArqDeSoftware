@@ -11,7 +11,9 @@ const UpsertRestaurantSchema = z.object({
   description: z.string().max(255).optional(),
   address: z.string().min(4).max(250),
   phone: z.string().max(30).optional(),
-  isOpen: z.boolean().default(true)
+  isOpen: z.boolean().default(true),
+  latitude: z.coerce.number().min(-90).max(90).optional().nullable(),
+  longitude: z.coerce.number().min(-180).max(180).optional().nullable()
 });
 
 const CreateProductSchema = z.object({
@@ -41,11 +43,13 @@ async function getRestaurantForOwner(ownerUserId: string) {
     address: string;
     phone: string | null;
     is_open: boolean;
+    latitude: number | null;
+    longitude: number | null;
     created_at: string;
     updated_at: string;
   }>(
     `
-    SELECT id, owner_user_id, name, description, address, phone, is_open, created_at, updated_at
+    SELECT id, owner_user_id, name, description, address, phone, is_open, latitude, longitude, created_at, updated_at
     FROM restaurants
     WHERE owner_user_id = $1
     `,
@@ -69,10 +73,12 @@ restaurantsRouter.get(
       address: string;
       phone: string | null;
       is_open: boolean;
+      latitude: number | null;
+      longitude: number | null;
       created_at: string;
     }>(
       `
-      SELECT id, name, description, address, phone, is_open, created_at
+      SELECT id, name, description, address, phone, is_open, latitude, longitude, created_at
       FROM restaurants
       WHERE ($1 = '' OR name ILIKE '%' || $1 || '%')
       ORDER BY is_open DESC, created_at DESC
@@ -129,9 +135,9 @@ restaurantsRouter.put(
         updated_at: string;
       }>(
         `
-        INSERT INTO restaurants (owner_user_id, name, description, address, phone, is_open)
-        VALUES ($1, $2, $3, $4, $5, $6)
-        RETURNING id, owner_user_id, name, description, address, phone, is_open, created_at, updated_at
+        INSERT INTO restaurants (owner_user_id, name, description, address, phone, is_open, latitude, longitude)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING id, owner_user_id, name, description, address, phone, is_open, latitude, longitude, created_at, updated_at
         `,
         [
           user.authUserId,
@@ -139,7 +145,9 @@ restaurantsRouter.put(
           parsed.data.description ?? null,
           parsed.data.address,
           parsed.data.phone ?? null,
-          parsed.data.isOpen
+          parsed.data.isOpen,
+          parsed.data.latitude,
+          parsed.data.longitude
         ]
       );
 
@@ -166,9 +174,11 @@ restaurantsRouter.put(
         address = $3,
         phone = $4,
         is_open = $5,
+        latitude = $6,
+        longitude = $7,
         updated_at = now()
-      WHERE owner_user_id = $6
-      RETURNING id, owner_user_id, name, description, address, phone, is_open, created_at, updated_at
+      WHERE owner_user_id = $8
+      RETURNING id, owner_user_id, name, description, address, phone, is_open, latitude, longitude, created_at, updated_at
       `,
       [
         parsed.data.name,
@@ -176,6 +186,8 @@ restaurantsRouter.put(
         parsed.data.address,
         parsed.data.phone ?? null,
         parsed.data.isOpen,
+        parsed.data.latitude,
+        parsed.data.longitude,
         user.authUserId
       ]
     );

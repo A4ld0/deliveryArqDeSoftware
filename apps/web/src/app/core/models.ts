@@ -8,6 +8,8 @@ export interface ApiUserProfile {
   isActive: boolean;
   phone?: string | null;
   address?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export interface Restaurant {
@@ -17,8 +19,20 @@ export interface Restaurant {
   address: string;
   phone: string | null;
   is_open: boolean;
+  latitude: number | null;
+  longitude: number | null;
   created_at: string;
   updated_at?: string;
+}
+
+export interface RestaurantUpdate {
+  name: string;
+  description?: string;
+  address: string;
+  phone?: string;
+  isOpen: boolean;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface OwnedRestaurant extends Restaurant {
@@ -43,18 +57,24 @@ export interface OrderSummary {
   restaurant_id: number;
   restaurant_name?: string; // Nombre opcional del negocio
   restaurant_address?: string; // Dirección del negocio
+  restaurant_latitude?: number;
+  restaurant_longitude?: number;
   delivery_address?: string; // Dirección de entrega
   driver_name?: string; // Nombre del repartidor
   customer_id: string;
   customer_name?: string; // Nombre del cliente
+  customer_phone?: string | null;
   total: string;
   delivery_fee: string;
+  tip_amount: string;
   created_at: string;
   updated_at: string;
   driver_latitude: number | null;
   driver_longitude: number | null;
   driver_accuracy: number | null;
   location_updated_at: string | null;
+  delivery_latitude: number | null;
+  delivery_longitude: number | null;
 }
 
 export interface OrderStatusEvent {
@@ -75,8 +95,14 @@ export interface DeliveryAvailable {
   id: number;
   status: string;
   restaurant_id: number;
+  restaurant_name?: string;
+  restaurant_address?: string;
+  restaurant_latitude?: number;
+  restaurant_longitude?: number;
   total: string;
   delivery_address: string;
+  delivery_latitude?: number;
+  delivery_longitude?: number;
   created_at: string;
 }
 
@@ -98,6 +124,8 @@ export interface AdminUser {
   role: UserRole;
   phone: string | null;
   address: string | null;
+  latitude: number | null;
+  longitude: number | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;

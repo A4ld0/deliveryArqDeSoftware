@@ -67,8 +67,9 @@ import { SessionService } from '../core/session.service';
   styles: `
     .admin-layout {
       display: flex;
-      min-height: 100vh;
+      height: 100vh;
       background: var(--bg-app);
+      overflow: hidden;
     }
 
     /* ── SIDEBAR ── */

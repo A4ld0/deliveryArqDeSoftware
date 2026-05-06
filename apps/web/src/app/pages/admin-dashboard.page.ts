@@ -13,176 +13,153 @@ type IncidentStatus = (typeof INCIDENT_STATUSES)[number];
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <section class="page">
+    <!-- Toast -->
+    @if (message) {
+      <div class="toast success">✓ {{ message }}</div>
+    }
+    @if (errorMessage) {
+      <div class="toast error">✕ {{ errorMessage }}</div>
+    }
 
-      <!-- Page header -->
-      <div class="page-header">
-        <div class="page-header__left">
-          <div class="page-header__icon">⚙️</div>
-          <div>
-            <h2>Panel de Administración</h2>
-            <p>Monitorea métricas, gestiona cuentas y resuelve incidencias de la plataforma.</p>
-          </div>
+    <div class="page anim-fade-in">
+
+      <!-- HEADER -->
+      <header class="page-header">
+        <div class="page-header__icon">⚙️</div>
+        <div class="page-header__text">
+          <h2>Panel de Administración</h2>
+          <p>Monitorea métricas, gestiona cuentas y resuelve incidencias.</p>
         </div>
         <button type="button" class="btn btn--ghost btn--sm" (click)="loadData()" [disabled]="loading">
-          @if (loading) {
-            <span class="spinner"></span> Actualizando...
-          } @else {
-            ↻ Recargar datos
-          }
+          @if (loading) { <span class="spinner"></span> } @else { ↻ }
         </button>
-      </div>
+      </header>
 
-      <!-- Metrics section -->
-      <div class="metrics-section">
-        <span class="section-label">Métricas en tiempo real</span>
-        <div class="metrics-grid">
-
-          <!-- Orders by status -->
-          <article class="metric-card">
-            <div class="metric-card__header">
-              <span class="metric-card__icon orders">📦</span>
-              <strong>Pedidos por estado</strong>
-            </div>
-            @if (!metrics.ordersByStatus.length) {
-              <span class="no-data">Sin datos registrados</span>
-            } @else {
-              <ul class="metric-list">
-                @for (item of metrics.ordersByStatus; track item.status) {
-                  <li class="metric-list__item">
-                    <span [class]="'status-pill ' + orderStatusClass(item.status)">
-                      {{ orderStatusLabel(item.status) }}
-                    </span>
-                    <strong class="metric-count">{{ item.count }}</strong>
-                  </li>
-                }
-              </ul>
-            }
-          </article>
-
-          <!-- Incidents by status -->
-          <article class="metric-card">
-            <div class="metric-card__header">
-              <span class="metric-card__icon incidents">⚠️</span>
-              <strong>Incidencias por estado</strong>
-            </div>
-            @if (!metrics.incidentsByStatus.length) {
-              <span class="no-data">Sin datos registrados</span>
-            } @else {
-              <ul class="metric-list">
-                @for (item of metrics.incidentsByStatus; track item.status) {
-                  <li class="metric-list__item">
-                    <span [class]="'status-pill ' + incidentStatusClass(item.status)">
-                      {{ incidentStatusLabel(item.status) }}
-                    </span>
-                    <strong class="metric-count">{{ item.count }}</strong>
-                  </li>
-                }
-              </ul>
-            }
-          </article>
-
-          <!-- Users by role -->
-          <article class="metric-card">
-            <div class="metric-card__header">
-              <span class="metric-card__icon users">👥</span>
-              <strong>Usuarios por rol</strong>
-            </div>
-            @if (!metrics.usersByRole.length) {
-              <span class="no-data">Sin datos registrados</span>
-            } @else {
-              <ul class="metric-list">
-                @for (item of metrics.usersByRole; track item.role) {
-                  <li class="metric-list__item">
-                    <span class="role-chip" [class]="'role-chip--' + item.role">
-                      {{ roleLabel(item.role) }}
-                    </span>
-                    <strong class="metric-count">{{ item.count }}</strong>
-                  </li>
-                }
-              </ul>
-            }
-          </article>
-
+      <!-- STATS -->
+      <div class="stats-bar anim-slide-up">
+        <div class="stat-item">
+          <span class="stat-item__val">{{ users.length }}</span>
+          <span class="stat-item__label">Usuarios</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-item__val">{{ totalOrders() }}</span>
+          <span class="stat-item__label">Pedidos</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-item__val">{{ incidents.length }}</span>
+          <span class="stat-item__label">Incidencias</span>
         </div>
       </div>
 
-      <!-- Main content grid -->
+      <!-- METRICS GRID -->
+      <div class="metrics-row">
+
+        <article class="metric-card">
+          <div class="metric-card__header">
+            <span class="metric-icon">📦</span>
+            <strong>Pedidos por estado</strong>
+          </div>
+          @if (!metrics.ordersByStatus.length) {
+            <span class="no-data">Sin datos</span>
+          } @else {
+            <ul class="metric-list">
+              @for (item of metrics.ordersByStatus; track item.status) {
+                <li class="metric-list__item">
+                  <span [class]="'status-pill ' + orderStatusClass(item.status)">{{ orderStatusLabel(item.status) }}</span>
+                  <strong class="metric-count">{{ item.count }}</strong>
+                </li>
+              }
+            </ul>
+          }
+        </article>
+
+        <article class="metric-card">
+          <div class="metric-card__header">
+            <span class="metric-icon">⚠️</span>
+            <strong>Incidencias por estado</strong>
+          </div>
+          @if (!metrics.incidentsByStatus.length) {
+            <span class="no-data">Sin datos</span>
+          } @else {
+            <ul class="metric-list">
+              @for (item of metrics.incidentsByStatus; track item.status) {
+                <li class="metric-list__item">
+                  <span [class]="'status-pill ' + incidentStatusClass(item.status)">{{ incidentStatusLabel(item.status) }}</span>
+                  <strong class="metric-count">{{ item.count }}</strong>
+                </li>
+              }
+            </ul>
+          }
+        </article>
+
+        <article class="metric-card">
+          <div class="metric-card__header">
+            <span class="metric-icon">👥</span>
+            <strong>Usuarios por rol</strong>
+          </div>
+          @if (!metrics.usersByRole.length) {
+            <span class="no-data">Sin datos</span>
+          } @else {
+            <ul class="metric-list">
+              @for (item of metrics.usersByRole; track item.role) {
+                <li class="metric-list__item">
+                  <span [class]="'role-chip role-chip--' + item.role">{{ roleLabel(item.role) }}</span>
+                  <strong class="metric-count">{{ item.count }}</strong>
+                </li>
+              }
+            </ul>
+          }
+        </article>
+
+      </div>
+
+      <!-- MAIN GRID: usuarios + incidencias -->
       <div class="content-grid">
 
-        <!-- Users management -->
+        <!-- Usuarios -->
         <article class="card">
           <div class="card-header">
-            <div class="card-header__left">
-              <h3>Gestión de usuarios</h3>
-              @if (users.length) {
-                <span class="count-badge">{{ users.length }}</span>
-              }
-            </div>
+            <h3>Gestión de Usuarios</h3>
+            @if (users.length) { <span class="count-badge">{{ users.length }}</span> }
           </div>
 
           @if (!users.length) {
             <div class="empty-state">
-              <span class="empty-state__icon">👤</span>
-              <p>No hay usuarios registrados en la plataforma.</p>
+              <span>👤</span>
+              <p>No hay usuarios registrados.</p>
             </div>
           } @else {
             <ul class="user-list">
               @for (user of users; track user.auth_user_id) {
                 <li class="user-item">
-                  <div class="user-item__avatar">
-                    {{ initials(user.full_name) }}
-                  </div>
-                  <div class="user-item__info">
-                    <div class="user-item__row">
+                  <div class="user-avatar">{{ initials(user.full_name) }}</div>
+                  <div class="user-body">
+                    <div class="user-row">
                       <strong class="user-name">{{ user.full_name }}</strong>
-                      <div class="user-item__badges">
-                        <span class="role-chip" [class]="'role-chip--' + userRoleFor(user)">
-                          {{ roleLabel(userRoleFor(user)) }}
-                        </span>
+                      <div class="user-badges">
+                        <span [class]="'role-chip role-chip--' + userRoleFor(user)">{{ roleLabel(userRoleFor(user)) }}</span>
                         <span class="active-badge" [class.inactive]="!userIsActiveFor(user)">
                           {{ userIsActiveFor(user) ? 'Activo' : 'Inactivo' }}
                         </span>
                       </div>
                     </div>
                     <span class="user-email">{{ user.email }}</span>
-
-                    <div class="user-item__controls">
-                      <label class="control-label">
-                        <span class="label-text">Rol</span>
-                        <select
-                          [ngModel]="userRoleFor(user)"
-                          (ngModelChange)="setUserRoleDraft(user.auth_user_id, $event)"
-                        >
+                    <div class="user-controls">
+                      <label class="ctrl-label">
+                        <span>Rol</span>
+                        <select [ngModel]="userRoleFor(user)" (ngModelChange)="setUserRoleDraft(user.auth_user_id, $event)">
                           @for (role of roles; track role) {
                             <option [ngValue]="role">{{ roleLabel(role) }}</option>
                           }
                         </select>
                       </label>
-
                       <label class="toggle-label">
-                        <input
-                          type="checkbox"
-                          [ngModel]="userIsActiveFor(user)"
-                          (ngModelChange)="setUserActiveDraft(user.auth_user_id, $event)"
-                          class="toggle-input"
-                        />
+                        <input type="checkbox" [ngModel]="userIsActiveFor(user)" (ngModelChange)="setUserActiveDraft(user.auth_user_id, $event)" class="toggle-input" />
                         <span class="toggle-track"><span class="toggle-thumb"></span></span>
-                        <span class="toggle-text">Cuenta activa</span>
+                        <span class="toggle-text">Activo</span>
                       </label>
-
-                      <button
-                        type="button"
-                        class="btn btn--primary btn--xs"
-                        (click)="updateUser(user)"
-                        [disabled]="updatingUserId === user.auth_user_id"
-                      >
-                        @if (updatingUserId === user.auth_user_id) {
-                          <span class="spinner spinner--white"></span>
-                          Guardando...
-                        } @else {
-                          ✓ Guardar
-                        }
+                      <button type="button" class="btn btn--primary btn--sm" (click)="updateUser(user)" [disabled]="updatingUserId === user.auth_user_id">
+                        @if (updatingUserId === user.auth_user_id) { <span class="spinner spinner--white"></span> } @else { ✓ Guardar }
                       </button>
                     </div>
                   </div>
@@ -192,64 +169,42 @@ type IncidentStatus = (typeof INCIDENT_STATUSES)[number];
           }
         </article>
 
-        <!-- Incidents management -->
+        <!-- Incidencias -->
         <article class="card">
           <div class="card-header">
-            <div class="card-header__left">
-              <h3>Incidencias</h3>
-              @if (incidents.length) {
-                <span class="count-badge">{{ incidents.length }}</span>
-              }
-            </div>
+            <h3>Incidencias</h3>
+            @if (incidents.length) { <span class="count-badge">{{ incidents.length }}</span> }
           </div>
 
           @if (!incidents.length) {
             <div class="empty-state">
-              <span class="empty-state__icon">✅</span>
-              <p>No hay incidencias registradas actualmente.</p>
+              <span>✅</span>
+              <p>No hay incidencias actualmente.</p>
             </div>
           } @else {
             <ul class="incident-list">
               @for (incident of incidents; track incident.id) {
                 <li class="incident-item">
-                  <div class="incident-item__header">
-                    <div class="incident-item__id">
+                  <div class="incident-header">
+                    <div class="incident-id-row">
                       <span class="incident-num">#{{ incident.id }}</span>
-                      <span [class]="'status-pill ' + incidentStatusClass(incident.status)">
-                        {{ incidentStatusLabel(incident.status) }}
-                      </span>
+                      <span [class]="'status-pill ' + incidentStatusClass(incident.status)">{{ incidentStatusLabel(incident.status) }}</span>
                     </div>
-                    <span class="incident-meta">Pedido #{{ incident.order_id }}</span>
+                    <span class="incident-ref">Pedido #{{ incident.order_id }}</span>
                   </div>
-
                   <strong class="incident-title">{{ incident.title }}</strong>
                   <p class="incident-desc">{{ incident.description }}</p>
-                  <span class="incident-reporter">Reportado por: {{ incident.reported_by }}</span>
-
-                  <div class="incident-item__controls">
-                    <label class="control-label">
-                      <span class="label-text">Cambiar estado</span>
-                      <select
-                        [ngModel]="incidentStatusFor(incident)"
-                        (ngModelChange)="setIncidentStatusDraft(incident.id, $event)"
-                      >
+                  <div class="incident-controls">
+                    <label class="ctrl-label">
+                      <span>Estado</span>
+                      <select [ngModel]="incidentStatusFor(incident)" (ngModelChange)="setIncidentStatusDraft(incident.id, $event)">
                         @for (status of incidentStatuses; track status) {
                           <option [ngValue]="status">{{ incidentStatusLabel(status) }}</option>
                         }
                       </select>
                     </label>
-                    <button
-                      type="button"
-                      class="btn btn--primary btn--xs"
-                      (click)="updateIncident(incident)"
-                      [disabled]="updatingIncidentId === incident.id"
-                    >
-                      @if (updatingIncidentId === incident.id) {
-                        <span class="spinner spinner--white"></span>
-                        Guardando...
-                      } @else {
-                        ✓ Actualizar
-                      }
+                    <button type="button" class="btn btn--primary btn--sm" (click)="updateIncident(incident)" [disabled]="updatingIncidentId === incident.id">
+                      @if (updatingIncidentId === incident.id) { <span class="spinner spinner--white"></span> } @else { ✓ Actualizar }
                     </button>
                   </div>
                 </li>
@@ -259,283 +214,73 @@ type IncidentStatus = (typeof INCIDENT_STATUSES)[number];
         </article>
 
       </div>
-
-      @if (message) {
-        <div class="alert alert--success">
-          <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-          {{ message }}
-        </div>
-      }
-      @if (errorMessage) {
-        <div class="alert alert--error">
-          <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
-          {{ errorMessage }}
-        </div>
-      }
-    </section>
+    </div>
   `,
   styles: `
-    /* ── Page layout ── */
-    .page {
-      display: grid;
-      gap: var(--space-5);
-    }
+    /* ── Layout ── */
+    .page { display: grid; gap: 2rem; padding: 1.5rem; }
 
-    /* ── Page header ── */
-    .page-header {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: var(--space-4);
-      flex-wrap: wrap;
-      padding: var(--space-5);
-      border: 1px solid var(--line);
-      border-radius: var(--radius-lg);
-      background: linear-gradient(135deg, var(--surface) 0%, #f5f3ff 100%);
-    }
+    /* ── Toast ── */
+    .toast { position: fixed; top: 1.5rem; left: 50%; transform: translateX(-50%); z-index: 9999; padding: 0.9rem 1.8rem; border-radius: 99px; font-weight: 800; font-size: 0.9rem; white-space: nowrap; display: flex; align-items: center; gap: 0.6rem; box-shadow: 0 8px 30px rgba(0,0,0,0.15); animation: toastIn 0.35s cubic-bezier(0.16,1,0.3,1); }
+    .toast.success { background: #16a34a; color: white; }
+    .toast.error   { background: #dc2626; color: white; }
+    @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(-16px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
 
-    .page-header__left {
-      display: flex;
-      align-items: flex-start;
-      gap: var(--space-4);
-    }
+    /* ── Header ── */
+    .page-header { display: flex; align-items: center; gap: 1.5rem; }
+    .page-header__icon { font-size: 2.5rem; flex-shrink: 0; }
+    .page-header__text { flex: 1; }
+    .page-header h2 { font-size: 1.8rem; font-weight: 900; margin: 0; }
+    .page-header p  { margin: 0; color: #666; font-size: 0.9rem; }
 
-    .page-header__icon {
-      font-size: 1.6rem;
-      line-height: 1;
-      flex-shrink: 0;
-      width: 3rem;
-      height: 3rem;
-      background: linear-gradient(145deg, #7c3aed 0%, #6d28d9 100%);
-      border-radius: var(--radius-sm);
-      display: grid;
-      place-items: center;
-      box-shadow: 0 4px 14px rgba(124, 58, 237, 0.25);
-    }
+    /* ── Stats bar ── */
+    .stats-bar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+    .stat-item { background: white; padding: 1.5rem; border-radius: 24px; border: 1.5px solid var(--line); display: flex; flex-direction: column; align-items: center; gap: 0.2rem; }
+    .stat-item__val   { font-size: 1.8rem; font-weight: 900; color: #000; }
+    .stat-item__label { font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: #888; }
 
-    .page-header h2 { font-size: clamp(1.15rem, 1.4vw, 1.45rem); margin: 0; }
-    .page-header p { margin: var(--space-1) 0 0; color: var(--muted); font-size: 0.88rem; line-height: 1.5; }
-
-    /* ── Metrics section ── */
-    .metrics-section {
-      display: grid;
-      gap: var(--space-3);
-    }
-
-    .section-label {
-      font-size: 0.76rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.07em;
-      color: var(--muted);
-    }
-
-    .metrics-grid {
-      display: grid;
-      gap: var(--space-3);
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    }
-
-    .metric-card {
-      border: 1px solid var(--line);
-      border-radius: var(--radius-md);
-      background: var(--panel);
-      padding: var(--space-4);
-      display: grid;
-      gap: var(--space-3);
-    }
-
-    .metric-card__header {
-      display: flex;
-      align-items: center;
-      gap: var(--space-2);
-    }
-
-    .metric-card__header strong {
-      font-size: 0.9rem;
-      font-weight: 700;
-      color: var(--ink);
-    }
-
-    .metric-card__icon {
-      font-size: 1.2rem;
-      line-height: 1;
-      width: 2.2rem;
-      height: 2.2rem;
-      border-radius: var(--radius-xs);
-      display: grid;
-      place-items: center;
-      flex-shrink: 0;
-    }
-
-    .metric-card__icon.orders   { background: #fff7ed; }
-    .metric-card__icon.incidents { background: #fef2f2; }
-    .metric-card__icon.users    { background: #f5f3ff; }
-
-    .metric-list {
-      list-style: none;
-      margin: 0;
-      padding: 0;
-      display: grid;
-      gap: var(--space-2);
-    }
-
-    .metric-list__item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: var(--space-2);
-    }
-
-    .metric-count {
-      font-size: 1.1rem;
-      font-weight: 800;
-      color: var(--ink);
-      flex-shrink: 0;
-    }
-
-    .no-data {
-      font-size: 0.84rem;
-      color: var(--muted-2);
-      font-style: italic;
-    }
+    /* ── Metrics row ── */
+    .metrics-row { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+    .metric-card { border: 1.5px solid var(--line); border-radius: 24px; background: white; padding: 1.5rem; display: grid; gap: 1rem; }
+    .metric-card__header { display: flex; align-items: center; gap: 0.75rem; }
+    .metric-card__header strong { font-size: 0.9rem; font-weight: 800; }
+    .metric-icon { font-size: 1.3rem; width: 2.2rem; height: 2.2rem; background: #f7f7f7; border-radius: 12px; display: grid; place-items: center; flex-shrink: 0; }
+    .metric-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.6rem; }
+    .metric-list__item { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+    .metric-count { font-size: 1.1rem; font-weight: 900; color: #000; }
+    .no-data { font-size: 0.82rem; color: #aaa; font-style: italic; }
 
     /* ── Content grid ── */
-    .content-grid {
-      display: grid;
-      gap: var(--space-4);
-    }
+    .content-grid { display: grid; gap: 1.5rem; }
+    @media (min-width: 900px) { .content-grid { grid-template-columns: 1fr 1fr; align-items: start; } }
 
-    /* ── Card ── */
-    .card {
-      border: 1px solid var(--line);
-      border-radius: var(--radius-lg);
-      background: var(--panel);
-      padding: var(--space-5);
-      display: grid;
-      gap: var(--space-4);
-    }
-
-    .card-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: var(--space-3);
-      flex-wrap: wrap;
-    }
-
-    .card-header__left {
-      display: flex;
-      align-items: center;
-      gap: var(--space-3);
-    }
-
-    h3 { margin: 0; }
-
-    .count-badge {
-      display: inline-flex;
-      align-items: center;
-      padding: 0.2rem 0.6rem;
-      border-radius: 999px;
-      font-size: 0.75rem;
-      font-weight: 700;
-      background: var(--primary-soft);
-      border: 1px solid var(--primary-muted);
-      color: var(--primary-strong);
-    }
+    /* ── Cards ── */
+    .card { border: 1.5px solid var(--line); border-radius: 28px; background: white; padding: 2rem; display: grid; gap: 1.5rem; }
+    .card-header { display: flex; align-items: center; gap: 0.75rem; }
+    .card-header h3 { font-size: 1.15rem; font-weight: 850; margin: 0; flex: 1; }
+    .count-badge { padding: 0.2rem 0.75rem; border-radius: 99px; font-size: 0.75rem; font-weight: 800; background: #f7f7f7; border: 1.5px solid var(--line); }
 
     /* ── Buttons ── */
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.4rem;
-      border: 0;
-      border-radius: 999px;
-      padding: 0.55rem 1rem;
-      font-weight: 700;
-      font-size: 0.88rem;
-      font-family: inherit;
-      cursor: pointer;
-      transition: all 0.18s ease;
-    }
-
-    .btn--primary {
-      background: linear-gradient(145deg, var(--primary) 0%, var(--primary-strong) 100%);
-      color: #fff;
-      box-shadow: 0 3px 10px rgba(248, 92, 35, 0.22);
-    }
-
-    .btn--primary:hover:not([disabled]) {
-      transform: translateY(-1px);
-      box-shadow: 0 6px 18px rgba(248, 92, 35, 0.3);
-    }
-
-    .btn--ghost {
-      background: var(--surface-alt);
-      border: 1px solid var(--line);
-      color: var(--ink);
-    }
-
-    .btn--ghost:hover:not([disabled]) {
-      border-color: var(--line-strong);
-      background: var(--surface);
-    }
-
-    .btn--sm { padding: 0.38rem 0.8rem; font-size: 0.82rem; }
-    .btn--xs { padding: 0.28rem 0.65rem; font-size: 0.76rem; min-height: auto; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; border: 0; border-radius: 99px; font-weight: 800; font-family: inherit; cursor: pointer; transition: 0.2s; }
+    .btn--primary { background: var(--primary); color: white; padding: 0.65rem 1.2rem; font-size: 0.85rem; }
+    .btn--primary:hover:not([disabled]) { box-shadow: 0 4px 14px rgba(255,68,31,0.3); transform: translateY(-1px); }
+    .btn--ghost { background: transparent; border: 1.5px solid var(--line); color: #555; padding: 0.5rem 1rem; font-size: 0.85rem; }
+    .btn--sm { padding: 0.55rem 1rem; font-size: 0.82rem; }
     .btn[disabled] { opacity: 0.5; cursor: not-allowed; }
 
     /* ── Role chips ── */
-    .role-chip {
-      display: inline-flex;
-      align-items: center;
-      padding: 0.2rem 0.6rem;
-      border-radius: 999px;
-      font-size: 0.72rem;
-      font-weight: 700;
-      letter-spacing: 0.03em;
-      border: 1px solid transparent;
-    }
-
+    .role-chip { display: inline-flex; align-items: center; padding: 0.22rem 0.65rem; border-radius: 99px; font-size: 0.72rem; font-weight: 800; border: 1.5px solid transparent; }
     .role-chip--client     { background: #fff7ed; color: #9a3412; border-color: #fed7aa; }
-    .role-chip--restaurant { background: #fef9ee; color: #854d0e; border-color: #fde68a; }
+    .role-chip--restaurant { background: #fefce8; color: #854d0e; border-color: #fde68a; }
     .role-chip--driver     { background: #eff6ff; color: #1e3a8a; border-color: #bfdbfe; }
     .role-chip--admin      { background: #f5f3ff; color: #5b21b6; border-color: #ddd6fe; }
 
     /* ── Active badge ── */
-    .active-badge {
-      display: inline-flex;
-      align-items: center;
-      padding: 0.2rem 0.55rem;
-      border-radius: 999px;
-      font-size: 0.7rem;
-      font-weight: 700;
-      letter-spacing: 0.03em;
-      background: #ecfdf5;
-      border: 1px solid #a7f3d0;
-      color: #065f46;
-    }
-
-    .active-badge.inactive {
-      background: #f8fafc;
-      border-color: var(--line);
-      color: var(--muted);
-    }
+    .active-badge { display: inline-flex; align-items: center; padding: 0.22rem 0.65rem; border-radius: 99px; font-size: 0.7rem; font-weight: 800; background: #f0fdf4; border: 1.5px solid #bbf7d0; color: #166534; }
+    .active-badge.inactive { background: #f8f8f8; border-color: var(--line); color: #999; }
 
     /* ── Status pills ── */
-    .status-pill {
-      display: inline-flex;
-      align-items: center;
-      padding: 0.18rem 0.6rem;
-      border-radius: 999px;
-      font-size: 0.7rem;
-      font-weight: 700;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      border: 1px solid transparent;
-    }
-
+    .status-pill { display: inline-flex; align-items: center; padding: 0.2rem 0.6rem; border-radius: 99px; font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; border: 1.5px solid transparent; }
     .status-pill.pending    { background: #fffbeb; color: #92400e; border-color: #fde68a; }
     .status-pill.accepted   { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
     .status-pill.ready      { background: #f0fdf4; color: #166534; border-color: #bbf7d0; }
@@ -544,305 +289,64 @@ type IncidentStatus = (typeof INCIDENT_STATUSES)[number];
     .status-pill.delivered  { background: #ecfdf5; color: #065f46; border-color: #6ee7b7; }
     .status-pill.rejected   { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
     .status-pill.cancelled  { background: #f8fafc; color: #475569; border-color: #cbd5e1; }
-
     .status-pill.open       { background: #fff7ed; color: #9a3412; border-color: #fed7aa; }
     .status-pill.in-review  { background: #faf5ff; color: #6b21a8; border-color: #e9d5ff; }
     .status-pill.resolved   { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
     .status-pill.closed     { background: #f8fafc; color: #475569; border-color: #cbd5e1; }
-    .status-pill.default    { background: var(--surface); color: var(--muted); border-color: var(--line); }
+    .status-pill.default    { background: #f7f7f7; color: #888; border-color: var(--line); }
 
     /* ── User list ── */
-    .user-list {
-      list-style: none;
-      margin: 0;
-      padding: 0;
-      display: grid;
-      gap: var(--space-3);
-    }
-
-    .user-item {
-      display: grid;
-      grid-template-columns: 2.6rem 1fr;
-      gap: var(--space-3);
-      border: 1px solid var(--line);
-      border-radius: var(--radius-md);
-      background: var(--surface-alt);
-      padding: var(--space-4);
-      align-items: start;
-    }
-
-    .user-item__avatar {
-      width: 2.6rem;
-      height: 2.6rem;
-      border-radius: 50%;
-      background: linear-gradient(145deg, var(--primary-soft) 0%, var(--primary-muted) 100%);
-      border: 1.5px solid var(--primary-muted);
-      display: grid;
-      place-items: center;
-      font-size: 0.8rem;
-      font-weight: 800;
-      color: var(--primary-strong);
-      flex-shrink: 0;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
-
-    .user-item__info {
-      display: grid;
-      gap: var(--space-2);
-      min-width: 0;
-    }
-
-    .user-item__row {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: var(--space-2);
-      flex-wrap: wrap;
-    }
-
-    .user-name {
-      font-size: 0.94rem;
-      font-weight: 700;
-      color: var(--ink);
-    }
-
-    .user-item__badges {
-      display: flex;
-      align-items: center;
-      gap: var(--space-1);
-      flex-wrap: wrap;
-      flex-shrink: 0;
-    }
-
-    .user-email {
-      font-size: 0.82rem;
-      color: var(--muted);
-      font-weight: 500;
-    }
-
-    .user-item__controls {
-      display: flex;
-      align-items: flex-end;
-      gap: var(--space-3);
-      flex-wrap: wrap;
-      margin-top: var(--space-1);
-      padding-top: var(--space-3);
-      border-top: 1px solid var(--line);
-    }
+    .user-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 1rem; }
+    .user-item { display: grid; grid-template-columns: 2.8rem 1fr; gap: 1rem; border: 1.5px solid var(--line); border-radius: 20px; background: #fafafa; padding: 1.2rem; align-items: start; }
+    .user-avatar { width: 2.8rem; height: 2.8rem; border-radius: 50%; background: #FFF0ED; border: 2px solid #ffd4c8; display: grid; place-items: center; font-size: 0.82rem; font-weight: 900; color: var(--primary); text-transform: uppercase; flex-shrink: 0; }
+    .user-body { display: grid; gap: 0.4rem; min-width: 0; }
+    .user-row  { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap; }
+    .user-name  { font-size: 0.95rem; font-weight: 800; color: #000; }
+    .user-badges { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; flex-shrink: 0; }
+    .user-email { font-size: 0.8rem; color: #888; font-weight: 600; }
+    .user-controls { display: flex; align-items: flex-end; gap: 1rem; flex-wrap: wrap; padding-top: 0.75rem; border-top: 1.5px solid var(--line); margin-top: 0.25rem; }
 
     /* ── Form controls ── */
-    .control-label {
-      display: grid;
-      gap: 0.35rem;
-    }
+    .ctrl-label { display: grid; gap: 0.3rem; }
+    .ctrl-label span { font-size: 0.75rem; font-weight: 800; color: #666; text-transform: uppercase; letter-spacing: 0.05em; }
+    select { border: 1.5px solid var(--line); border-radius: 12px; padding: 0.5rem 0.8rem; font: inherit; font-size: 0.85rem; background: white; color: #000; transition: border-color 0.15s, box-shadow 0.15s; min-height: 40px; }
+    select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(255,68,31,0.12); }
 
-    .label-text {
-      font-size: 0.78rem;
-      font-weight: 600;
-      color: var(--ink-2);
-    }
-
-    select {
-      border: 1.5px solid var(--line);
-      border-radius: var(--radius-sm);
-      padding: 0.48rem 0.72rem;
-      font: inherit;
-      font-size: 0.86rem;
-      background: var(--surface);
-      color: var(--ink);
-      transition: border-color 0.15s, box-shadow 0.15s;
-      min-height: 38px;
-    }
-
-    select:hover { border-color: var(--line-strong); }
-
-    select:focus {
-      outline: none;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(248, 92, 35, 0.12);
-    }
-
-    /* ── Toggle switch ── */
-    .toggle-label {
-      display: flex;
-      align-items: center;
-      gap: var(--space-2);
-      cursor: pointer;
-      user-select: none;
-    }
-
+    /* ── Toggle ── */
+    .toggle-label { display: flex; align-items: center; gap: 0.6rem; cursor: pointer; user-select: none; }
     .toggle-input { display: none; }
-
-    .toggle-track {
-      width: 2.4rem;
-      height: 1.3rem;
-      border-radius: 999px;
-      background: var(--line-strong);
-      position: relative;
-      transition: background 0.2s ease;
-      flex-shrink: 0;
-    }
-
-    .toggle-input:checked + .toggle-track {
-      background: var(--success);
-    }
-
-    .toggle-thumb {
-      position: absolute;
-      top: 2px;
-      left: 2px;
-      width: 0.95rem;
-      height: 0.95rem;
-      border-radius: 50%;
-      background: #fff;
-      transition: transform 0.2s ease;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
-    }
-
-    .toggle-input:checked + .toggle-track .toggle-thumb {
-      transform: translateX(1.1rem);
-    }
-
-    .toggle-text {
-      font-size: 0.84rem;
-      font-weight: 600;
-      color: var(--ink-2);
-    }
+    .toggle-track { width: 2.4rem; height: 1.3rem; border-radius: 99px; background: #ddd; position: relative; transition: background 0.2s; flex-shrink: 0; }
+    .toggle-input:checked + .toggle-track { background: #22c55e; }
+    .toggle-thumb { position: absolute; top: 2px; left: 2px; width: 0.95rem; height: 0.95rem; border-radius: 50%; background: white; transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.18); }
+    .toggle-input:checked + .toggle-track .toggle-thumb { transform: translateX(1.1rem); }
+    .toggle-text { font-size: 0.82rem; font-weight: 700; color: #555; }
 
     /* ── Incident list ── */
-    .incident-list {
-      list-style: none;
-      margin: 0;
-      padding: 0;
-      display: grid;
-      gap: var(--space-3);
-    }
-
-    .incident-item {
-      border: 1px solid var(--line);
-      border-radius: var(--radius-md);
-      background: var(--surface-alt);
-      padding: var(--space-4);
-      display: grid;
-      gap: var(--space-2);
-    }
-
-    .incident-item__header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: var(--space-2);
-      flex-wrap: wrap;
-    }
-
-    .incident-item__id {
-      display: flex;
-      align-items: center;
-      gap: var(--space-2);
-    }
-
-    .incident-num {
-      font-weight: 800;
-      font-size: 0.9rem;
-      color: var(--ink);
-    }
-
-    .incident-meta {
-      font-size: 0.78rem;
-      color: var(--muted);
-      font-weight: 500;
-    }
-
-    .incident-title {
-      font-size: 0.94rem;
-      font-weight: 700;
-      color: var(--ink);
-      line-height: 1.3;
-    }
-
-    .incident-desc {
-      margin: 0;
-      font-size: 0.84rem;
-      color: var(--muted);
-      line-height: 1.5;
-    }
-
-    .incident-reporter {
-      font-size: 0.78rem;
-      color: var(--muted-2);
-      font-weight: 500;
-    }
-
-    .incident-item__controls {
-      display: flex;
-      align-items: flex-end;
-      gap: var(--space-3);
-      flex-wrap: wrap;
-      padding-top: var(--space-3);
-      border-top: 1px solid var(--line);
-      margin-top: var(--space-1);
-    }
+    .incident-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 1rem; }
+    .incident-item { border: 1.5px solid var(--line); border-radius: 20px; background: #fafafa; padding: 1.2rem; display: grid; gap: 0.6rem; }
+    .incident-header { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap; }
+    .incident-id-row { display: flex; align-items: center; gap: 0.5rem; }
+    .incident-num { font-weight: 900; font-size: 0.9rem; color: #000; }
+    .incident-ref { font-size: 0.78rem; color: #999; font-weight: 600; }
+    .incident-title { font-size: 0.92rem; font-weight: 800; color: #000; }
+    .incident-desc { margin: 0; font-size: 0.82rem; color: #777; line-height: 1.5; }
+    .incident-controls { display: flex; align-items: flex-end; gap: 1rem; flex-wrap: wrap; padding-top: 0.75rem; border-top: 1.5px solid var(--line); margin-top: 0.1rem; }
 
     /* ── Empty state ── */
-    .empty-state {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: var(--space-2);
-      padding: var(--space-6) 0;
-      text-align: center;
-    }
-
-    .empty-state__icon { font-size: 2.5rem; line-height: 1; }
-    .empty-state p { margin: 0; color: var(--muted); font-size: 0.9rem; }
+    .empty-state { display: flex; flex-direction: column; align-items: center; gap: 0.75rem; padding: 3rem 0; text-align: center; }
+    .empty-state span { font-size: 2.5rem; }
+    .empty-state p { margin: 0; color: #999; font-size: 0.9rem; }
 
     /* ── Spinner ── */
-    .spinner {
-      width: 0.9rem;
-      height: 0.9rem;
-      border: 2px solid rgba(100, 60, 30, 0.2);
-      border-top-color: var(--primary);
-      border-radius: 50%;
-      animation: spin 0.6s linear infinite;
-      flex-shrink: 0;
-    }
-
-    .spinner--white {
-      border-color: rgba(255, 255, 255, 0.35);
-      border-top-color: #fff;
-    }
-
+    .spinner { width: 1rem; height: 1rem; border: 2px solid rgba(0,0,0,0.1); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; }
+    .spinner--white { border-color: rgba(255,255,255,0.3); border-top-color: white; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ── Alerts ── */
-    .alert {
-      display: flex;
-      align-items: flex-start;
-      gap: 0.55rem;
-      padding: 0.75rem 1rem;
-      border-radius: var(--radius-sm);
-      font-weight: 600;
-      font-size: 0.9rem;
-    }
-
-    .alert svg {
-      width: 1.1rem;
-      height: 1.1rem;
-      flex-shrink: 0;
-      margin-top: 0.05rem;
-    }
-
-    .alert--success { background: var(--success-soft); border: 1px solid #a7f3d0; color: #065f46; }
-    .alert--error   { background: var(--danger-soft);  border: 1px solid #fecaca; color: var(--danger); }
-
-    /* ── Responsive ── */
-    @media (min-width: 900px) {
-      .content-grid {
-        grid-template-columns: 1fr 1fr;
-        align-items: start;
-      }
-    }
+    /* ── Animations ── */
+    .anim-fade-in  { animation: fadeIn  0.4s ease both; }
+    .anim-slide-up { animation: slideUp 0.4s ease both; }
+    @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
   `
 })
 export class AdminDashboardPageComponent {
@@ -869,6 +373,10 @@ export class AdminDashboardPageComponent {
 
   constructor(private readonly apiService: ApiService) {
     void this.loadData();
+  }
+
+  protected totalOrders(): number {
+    return this.metrics.ordersByStatus.reduce((sum, item) => sum + Number(item.count), 0);
   }
 
   protected initials(fullName: string): string {

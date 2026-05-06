@@ -2,6 +2,8 @@ import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, computed, signal, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { LocationPickerComponent } from '../components/location-picker.component';
+import { OrderMapComponent } from '../components/order-map.component';
 import { ActivatedRoute } from '@angular/router';
 import { ApiService } from '../core/api.service';
 import type { OrderSummary, OwnedRestaurant, Product } from '../core/models';
@@ -9,12 +11,40 @@ import type { OrderSummary, OwnedRestaurant, Product } from '../core/models';
 @Component({
   selector: 'app-restaurant-dashboard-page',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, LocationPickerComponent, OrderMapComponent],
   template: `
-    <div class="dashboard-viewport anim-fade-in">
+    <div class="dashboard-viewport anim-fade-in" [class.no-restaurant]="!hasRestaurant">
       
-      <!-- ══ SECTION: DASHBOARD (OVERVIEW) ══ -->
-      @if (currentSection() === 'dashboard') {
+      <!-- ══ ONBOARDING: NO RESTAURANT ══ -->
+      @if (!hasRestaurant && currentSection() === 'dashboard') {
+        <div class="onboarding-overlay">
+          <div class="onboarding-card anim-slide-up">
+            <div class="onboarding-header">
+              <div class="onboarding-icon">🏪</div>
+              <h1>Configura tu Negocio</h1>
+              <p>Completa la información para empezar a vender.</p>
+            </div>
+            <form (submit)="saveRestaurant($event)" class="settings-form">
+              <div class="form-group">
+                <label>Nombre del Negocio</label>
+                <input type="text" [(ngModel)]="restaurantForm.name" name="onbName" placeholder="Ej: Pizza Hut" required />
+              </div>
+              <div class="form-group">
+                <label>Dirección del Negocio</label>
+                <p class="field-hint">Escribe la dirección y presiona Buscar para ubicarla en el mapa.</p>
+                <app-location-picker
+                  [lat]="restaurantForm.latitude || 20.6597"
+                  [lng]="restaurantForm.longitude || -103.3496"
+                  [address]="restaurantForm.address"
+                  (locationChange)="onLocationChange($event)"
+                  (addressChange)="restaurantForm.address = $event"
+                ></app-location-picker>
+              </div>
+              <button type="submit" class="save-btn" [disabled]="savingRestaurant">Crear Negocio</button>
+            </form>
+          </div>
+        </div>
+      } @else if (currentSection() === 'dashboard') {
         <div class="section-container">
           <header class="section-header">
             <div>
@@ -43,8 +73,8 @@ import type { OrderSummary, OwnedRestaurant, Product } from '../core/models';
               <span class="stat-value">{{ products.length }}</span>
             </div>
             <div class="stat-card">
-              <span class="stat-label">Rating Promedio</span>
-              <span class="stat-value">4.8 ★</span>
+              <span class="stat-label">Ganancias</span>
+              <span class="stat-value">\${{ totalEarnings() }}</span>
             </div>
           </div>
 
@@ -128,6 +158,22 @@ import type { OrderSummary, OwnedRestaurant, Product } from '../core/models';
                     }
                   </div>
                   
+                  @if (hasDeliveryLocation(order)) {
+                    <div class="order-delivery-map">
+                      <div class="delivery-map-header">
+                        <span>🏠</span>
+                        <span>{{ order.delivery_address }}</span>
+                      </div>
+                      <app-order-map
+                        [restaurantLat]="order.restaurant_latitude"
+                        [restaurantLng]="order.restaurant_longitude"
+                        [deliveryLat]="order.delivery_latitude"
+                        [deliveryLng]="order.delivery_longitude"
+                        height="200px"
+                      ></app-order-map>
+                    </div>
+                  }
+
                   @if (order.driver_name) {
                     <div class="order-driver-info">
                       <span class="driver-icon">🛵</span>
@@ -262,46 +308,77 @@ import type { OrderSummary, OwnedRestaurant, Product } from '../core/models';
 
           <article class="settings-card">
             <form (submit)="saveRestaurant($event)" class="settings-form">
-              <div class="form-group">
-                <label>Nombre Comercial</label>
-                <input type="text" [(ngModel)]="restaurantForm.name" name="rName" required />
-              </div>
-              <div class="form-row">
-                <div class="form-group">
-                  <label>Teléfono</label>
-                  <input type="text" [(ngModel)]="restaurantForm.phone" name="rPhone" />
+              <div class="form-split">
+                <div class="form-inputs">
+                  <div class="form-group">
+                    <label>Nombre Comercial</label>
+                    <input type="text" [(ngModel)]="restaurantForm.name" name="rName" required />
+                  </div>
+                  <div class="form-group">
+                    <label>Teléfono de Contacto</label>
+                    <input type="text" [(ngModel)]="restaurantForm.phone" name="rPhone" />
+                  </div>
+                  <div class="form-group">
+                    <label>Descripción / Slogan</label>
+                    <textarea [(ngModel)]="restaurantForm.description" name="rDesc"></textarea>
+                  </div>
                 </div>
-                <div class="form-group">
-                  <label>Dirección Física</label>
-                  <input type="text" [(ngModel)]="restaurantForm.address" name="rAddress" required />
+                
+                <div class="form-location">
+                  <div class="form-group">
+                    <label>Dirección del Negocio</label>
+                    <p class="field-hint">Escribe la dirección y presiona Buscar — el mapa y el campo se actualizan solos.</p>
+                    <app-location-picker
+                      [lat]="restaurantForm.latitude || 20.6597"
+                      [lng]="restaurantForm.longitude || -103.3496"
+                      [address]="restaurantForm.address"
+                      (locationChange)="onLocationChange($event)"
+                      (addressChange)="restaurantForm.address = $event"
+                    ></app-location-picker>
+                  </div>
                 </div>
               </div>
-              <div class="form-group">
-                <label>Descripción del Negocio</label>
-                <textarea [(ngModel)]="restaurantForm.description" name="rDesc"></textarea>
-              </div>
-              <button type="submit" class="save-btn" [disabled]="savingRestaurant">Actualizar Información</button>
+              <button type="submit" class="save-btn" [disabled]="savingRestaurant">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                Actualizar Información del Negocio
+              </button>
             </form>
           </article>
         </div>
       }
 
     </div>
+
+    @if (message) {
+      <div class="toast success">{{ message }}</div>
+    }
+    @if (errorMessage) {
+      <div class="toast error">{{ errorMessage }}</div>
+    }
   `,
   styles: `
-    .dashboard-viewport { max-width: 1200px; margin: 0 auto; }
-    .section-container { display: grid; gap: 2.5rem; animation: fadeIn 0.4s ease-out; }
+    .dashboard-viewport { max-width: 1200px; margin: 0 auto; min-height: 100%; display: flex; flex-direction: column; }
+    .dashboard-viewport.no-restaurant { justify-content: center; align-items: center; }
+    
+    .onboarding-overlay { width: 100%; max-width: 600px; padding: 2rem; }
+    .onboarding-card { background: white; border-radius: 32px; border: 1.5px solid var(--line); padding: 3rem; box-shadow: 0 20px 50px rgba(0,0,0,0.1); }
+    .onboarding-header { text-align: center; margin-bottom: 2.5rem; }
+    .onboarding-icon { font-size: 4rem; margin-bottom: 1rem; }
+    .onboarding-header h1 { margin: 0; font-size: 2.2rem; font-weight: 900; }
+    .onboarding-header p { margin: 0.5rem 0 0; color: var(--muted); font-weight: 600; }
+
+    .section-container { display: flex; flex-direction: column; gap: 2.5rem; animation: fadeIn 0.4s ease-out; flex: 1; padding-bottom: 5rem; }
     .section-header { display: flex; justify-content: space-between; align-items: flex-end; }
     .section-header h1 { margin: 0; font-size: 2.2rem; font-weight: 900; letter-spacing: -0.03em; }
     .section-header p { margin: 0.3rem 0 0; color: var(--muted); font-weight: 500; font-size: 1.1rem; }
 
     /* Orders V2 */
-    .orders-grid { display: grid; gap: 1.2rem; }
+    .orders-grid { display: grid; gap: 1.5rem; }
     .order-card { 
-      background: white; border-radius: 28px; border: 1.5px solid var(--line); overflow: hidden;
+      background: white; border-radius: 32px; border: 2px solid var(--line); overflow: hidden;
       display: flex; flex-direction: column; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
-    .order-card:hover { transform: translateY(-4px); box-shadow: 0 12px 30px rgba(0,0,0,0.05); }
+    .order-card:hover { transform: translateY(-6px); box-shadow: 0 20px 40px rgba(0,0,0,0.08); }
     .order-card--new { border-color: var(--primary); box-shadow: 0 10px 30px rgba(255,68,31,0.1); }
     
     .order-details-tray { padding: 1rem 1.5rem; background: #fafafa; border-top: 1.5px solid var(--line); border-bottom: 1.5px solid var(--line); display: grid; gap: 0.5rem; }
@@ -390,16 +467,24 @@ import type { OrderSummary, OwnedRestaurant, Product } from '../core/models';
     .del-btn:hover { background: #fee2e2 !important; }
 
     /* Forms */
-    .settings-card, .product-form-card { background: white; padding: 3rem; border-radius: 32px; border: 1.5px solid var(--line); box-shadow: 0 10px 40px rgba(0,0,0,0.02); }
-    .settings-card h3, .product-form-card h3 { margin: 0 0 2rem; font-size: 1.5rem; font-weight: 900; letter-spacing: -0.02em; }
-    .grid-form, .settings-form { display: grid; gap: 2rem; }
+    .settings-card, .product-form-card { background: white; padding: 3rem; border-radius: 32px; border: 2px solid var(--line); box-shadow: 0 10px 40px rgba(0,0,0,0.02); }
+    .settings-form { display: grid; gap: 2.5rem; }
+    .form-inputs, .form-location { display: grid; gap: 1.8rem; }
+    .form-group { display: grid; gap: 0.8rem; }
+    .form-group label { font-size: 0.85rem; font-weight: 900; color: var(--ink); text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.6; }
+    .field-hint { font-size: 0.8rem; color: var(--muted); margin: -0.5rem 0 0.5rem; font-weight: 600; }
+    
+    input, textarea { padding: 1.2rem 1.5rem; border-radius: 20px; border: 2px solid var(--line); background: var(--bg-app); font-family: inherit; font-size: 1rem; font-weight: 600; transition: all 0.2s; }
+    input:focus, textarea:focus { outline: none; border-color: var(--primary); background: white; box-shadow: 0 0 0 5px var(--primary-soft); }
+    
+    .save-btn { background: var(--ink); color: white; border: none; padding: 1.4rem; border-radius: 99px; font-weight: 900; font-size: 1.1rem; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 1rem; }
+    .save-btn svg { width: 1.4rem; height: 1.4rem; }
+    .save-btn:hover { transform: translateY(-3px); box-shadow: 0 10px 25px rgba(0,0,0,0.2); background: #000; }
+    .save-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .grid-form { display: grid; gap: 2rem; }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
-    .form-group { display: grid; gap: 0.6rem; }
-    .form-group label { font-size: 0.9rem; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
-    input, textarea { padding: 1.2rem; border-radius: 16px; border: 1.5px solid var(--line); background: var(--bg-app); font-family: inherit; font-size: 1rem; font-weight: 500; transition: all 0.2s; }
-    input:focus, textarea:focus { outline: none; border-color: var(--primary); background: white; box-shadow: 0 0 0 4px var(--primary-soft); }
-    .save-btn, .submit-btn { background: var(--ink); color: white; border: none; padding: 1.2rem; border-radius: 99px; font-weight: 800; font-size: 1.1rem; cursor: pointer; transition: all 0.2s; }
-    .save-btn:hover, .submit-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
+    .submit-btn { background: var(--ink); color: white; border: none; padding: 1.2rem; border-radius: 99px; font-weight: 800; font-size: 1.1rem; cursor: pointer; transition: all 0.2s; }
+    .submit-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
 
     .form-split { display: grid; grid-template-columns: 340px 1fr; gap: 3rem; }
     .image-dropzone { display: flex; flex-direction: column; gap: 1rem; }
@@ -413,6 +498,8 @@ import type { OrderSummary, OwnedRestaurant, Product } from '../core/models';
     .dropzone-content p { font-size: 0.8rem; font-weight: 500; margin: 0; }
     .preview-img { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; }
     .order-address { font-size: 0.8rem; color: var(--muted); font-weight: 600; display: block; margin-top: 0.2rem; }
+    .order-delivery-map { border-top: 1.5px solid var(--line); }
+    .delivery-map-header { display: flex; align-items: center; gap: 0.6rem; padding: 0.8rem 1.5rem; font-size: 0.85rem; font-weight: 700; color: var(--ink); background: var(--bg-app); }
     .order-driver-info { display: flex; align-items: center; gap: 0.8rem; padding: 1rem 1.5rem; background: var(--surface-alt); border-top: 1px solid var(--line); }
     .driver-icon { font-size: 1.5rem; }
     .driver-text { display: flex; flex-direction: column; }
@@ -427,6 +514,18 @@ import type { OrderSummary, OwnedRestaurant, Product } from '../core/models';
     .add-btn { background: var(--primary); color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 99px; font-weight: 800; cursor: pointer; transition: all 0.2s; }
     .add-btn:hover { transform: scale(1.05); box-shadow: 0 4px 15px var(--primary-soft); }
 
+    .toast {
+      position: fixed; top: 1.5rem; left: 50%; transform: translateX(-50%);
+      z-index: 9999; padding: 0.9rem 1.8rem; border-radius: 99px;
+      font-weight: 800; font-size: 0.9rem; white-space: nowrap;
+      display: flex; align-items: center; gap: 0.6rem;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+      animation: toastIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .toast.success { background: #16a34a; color: white; }
+    .toast.error { background: #dc2626; color: white; }
+
+    @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(-16px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -477,7 +576,9 @@ export class RestaurantDashboardPageComponent implements OnInit {
     address: '',
     description: '',
     phone: '',
-    isOpen: true
+    isOpen: true,
+    latitude: null as number | null,
+    longitude: null as number | null
   };
 
   protected productForm = {
@@ -498,6 +599,11 @@ export class RestaurantDashboardPageComponent implements OnInit {
   protected async toggleOpen() {
     this.restaurantForm.isOpen = !this.restaurantForm.isOpen;
     await this.saveRestaurant(new Event('submit'));
+  }
+
+  protected totalEarnings(): string {
+    const sum = this.orders.reduce((acc, o) => acc + Number(o.total), 0);
+    return sum.toFixed(2);
   }
 
   protected asPrice(value: number | string): string {
@@ -554,6 +660,11 @@ export class RestaurantDashboardPageComponent implements OnInit {
     await Promise.all([this.loadRestaurant(), this.loadOrders()]);
   }
 
+  protected onLocationChange(loc: { lat: number; lng: number }): void {
+    this.restaurantForm.latitude = loc.lat;
+    this.restaurantForm.longitude = loc.lng;
+  }
+
   protected async saveRestaurant(event: Event): Promise<void> {
     event.preventDefault();
     this.errorMessage = '';
@@ -565,10 +676,13 @@ export class RestaurantDashboardPageComponent implements OnInit {
         address: this.restaurantForm.address.trim(),
         description: this.restaurantForm.description.trim() || undefined,
         phone: this.restaurantForm.phone.trim() || undefined,
-        isOpen: this.restaurantForm.isOpen
+        isOpen: this.restaurantForm.isOpen,
+        latitude: this.restaurantForm.latitude ?? undefined,
+        longitude: this.restaurantForm.longitude ?? undefined
       });
       this.hasRestaurant = true;
       this.message = 'Restaurante guardado correctamente.';
+      setTimeout(() => this.message = '', 3000);
       await this.loadProducts();
     } catch (error) {
       this.errorMessage = this.toErrorMessage(error, 'No se pudo guardar el restaurante.');
@@ -682,6 +796,10 @@ export class RestaurantDashboardPageComponent implements OnInit {
     }
   }
 
+  protected hasDeliveryLocation(order: OrderSummary): boolean {
+    return Number.isFinite(Number(order.delivery_latitude)) && Number.isFinite(Number(order.delivery_longitude));
+  }
+
   protected canAcceptOrder(status: string): boolean {
     return status === 'PENDING';
   }
@@ -719,16 +837,19 @@ export class RestaurantDashboardPageComponent implements OnInit {
   private async loadRestaurant(): Promise<void> {
     this.errorMessage = '';
     try {
-      this.restaurant = await this.apiService.getMyRestaurant();
-      this.hasRestaurant = Boolean(this.restaurant);
-      if (!this.restaurant) return;
+      const data = await this.apiService.getMyRestaurant();
+      this.restaurant = data;
+      this.hasRestaurant = Boolean(data);
+      if (!data) return;
 
       this.restaurantForm = {
-        name: this.restaurant.name,
-        address: this.restaurant.address,
-        description: this.restaurant.description ?? '',
-        phone: this.restaurant.phone ?? '',
-        isOpen: this.restaurant.is_open
+        name: data.name,
+        description: data.description || '',
+        address: data.address,
+        phone: data.phone || '',
+        isOpen: data.is_open,
+        latitude: data.latitude ?? null,
+        longitude: data.longitude ?? null
       };
       await this.loadProducts();
     } catch (error) {

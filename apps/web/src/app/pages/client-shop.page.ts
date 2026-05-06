@@ -18,7 +18,7 @@ const GRADIENTS = [
 @Component({
   selector: 'app-client-shop-page',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterLink],
   template: `
     <div class="shop-container">
       

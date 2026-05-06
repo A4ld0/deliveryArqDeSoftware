@@ -6,13 +6,14 @@ import { Router, RouterLink } from '@angular/router';
 import { ApiService } from '../core/api.service';
 import { ClientOrderStateService } from '../core/client-order-state.service';
 import { ProfileService } from '../core/profile.service';
+import { LocationPickerComponent } from '../components/location-picker.component';
 
 const DELIVERY_FEE = 25;
 
 @Component({
   selector: 'app-client-checkout-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, LocationPickerComponent],
   template: `
     <div class="checkout-container">
       <header class="checkout-header">
@@ -47,6 +48,13 @@ const DELIVERY_FEE = 25;
                     <input type="text" [(ngModel)]="deliveryAddress" placeholder="Ej. Av. Vallarta 123, Int 4" required />
                   </div>
                 </div>
+                <div class="map-label">Confirma la ubicación en el mapa</div>
+                <app-location-picker
+                  [lat]="profileLat"
+                  [lng]="profileLng"
+                  [address]="deliveryAddress"
+                  (locationChange)="onLocationChange($event)"
+                ></app-location-picker>
               </div>
             </section>
 
@@ -150,6 +158,7 @@ const DELIVERY_FEE = 25;
     .section-header h3 { margin: 0; font-size: 1.2rem; font-weight: 800; }
 
     .delivery-card { display: grid; gap: 1rem; }
+    .map-label { font-size: 0.85rem; font-weight: 700; color: var(--muted); }
     .input-group { display: grid; gap: 0.5rem; }
     .input-group label { font-size: 0.85rem; font-weight: 700; color: var(--muted); }
     .input-wrapper { position: relative; }
@@ -220,9 +229,26 @@ export class ClientCheckoutPageComponent {
   protected readonly profile = this.profileService.profile;
 
   protected deliveryAddress = '';
+  protected deliveryLat: number | null = null;
+  protected deliveryLng: number | null = null;
   protected paymentMethod = 'SIMULATED_CARD';
   protected placingOrder = false;
   protected errorMessage = '';
+
+  protected get profileLat(): number {
+    const v = Number(this.profile()?.latitude);
+    return Number.isFinite(v) ? v : 20.6597;
+  }
+
+  protected get profileLng(): number {
+    const v = Number(this.profile()?.longitude);
+    return Number.isFinite(v) ? v : -103.3496;
+  }
+
+  protected onLocationChange(event: { lat: number; lng: number }): void {
+    this.deliveryLat = event.lat;
+    this.deliveryLng = event.lng;
+  }
 
   constructor() {
     this.initAddress();
@@ -258,7 +284,9 @@ export class ClientCheckoutPageComponent {
             fullName: p.fullName,
             role: p.role,
             phone: p.phone ?? undefined,
-            address: currentAddress
+            address: currentAddress,
+            latitude: this.deliveryLat,
+            longitude: this.deliveryLng
           });
         } catch (e) {
           console.warn('No se pudo actualizar la dirección del perfil, pero procedemos con el pedido.');
@@ -269,6 +297,8 @@ export class ClientCheckoutPageComponent {
         restaurantId: rid,
         deliveryAddress: currentAddress,
         paymentMethod: this.paymentMethod,
+        deliveryLatitude: this.deliveryLat,
+        deliveryLongitude: this.deliveryLng,
         items: this.cart().map(i => ({ productId: i.productId, quantity: i.quantity }))
       });
 

@@ -11,6 +11,7 @@ import type {
   OrderSummary,
   Product,
   Restaurant,
+  RestaurantUpdate,
   UserRole
 } from './models';
 
@@ -53,13 +54,7 @@ export class ApiService {
     }
   }
 
-  async upsertMyRestaurant(payload: {
-    name: string;
-    description?: string;
-    address: string;
-    phone?: string;
-    isOpen: boolean;
-  }): Promise<OwnedRestaurant> {
+  async upsertMyRestaurant(payload: RestaurantUpdate): Promise<OwnedRestaurant> {
     const response = await firstValueFrom(
       this.http.put<{ restaurant: OwnedRestaurant }>(
         `${environment.apiBaseUrl}/restaurants/me`,
@@ -131,14 +126,17 @@ export class ApiService {
   async createOrder(payload: {
     restaurantId: number;
     deliveryAddress: string;
+    deliveryLatitude?: number | null;
+    deliveryLongitude?: number | null;
+    tipAmount?: number;
     paymentMethod: string;
-    items: Array<{ productId: number; quantity: number }>;
-  }): Promise<{ id: number; status: string }> {
+    items: {
+      productId: number;
+      quantity: number;
+    }[];
+  }): Promise<OrderSummary> {
     const response = await firstValueFrom(
-      this.http.post<{ order: { id: number; status: string } }>(
-        `${environment.apiBaseUrl}/orders`,
-        payload
-      )
+      this.http.post<{ order: OrderSummary }>(`${environment.apiBaseUrl}/orders`, payload)
     );
     return response.order;
   }
