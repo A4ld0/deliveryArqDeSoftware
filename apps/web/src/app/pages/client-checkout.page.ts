@@ -16,8 +16,8 @@ const DELIVERY_FEE = 25;
   template: `
     <div class="checkout-container">
       <header class="checkout-header">
-        <a routerLink="/" class="back-btn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5m7-7-7 7 7 7"/></svg>
+        <a routerLink="/" class="back-btn" aria-label="Volver a la tienda">
+          <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5m7-7-7 7 7 7"/></svg>
         </a>
         <h1>Finalizar pedido</h1>
       </header>
@@ -41,10 +41,10 @@ const DELIVERY_FEE = 25;
               </div>
               <div class="delivery-card">
                 <div class="input-group">
-                  <label>Dirección completa</label>
+                  <label for="checkout-delivery-address">Dirección completa</label>
                   <div class="input-wrapper">
-                    <svg viewBox="0 0 24 24" class="input-icon"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 010-5 2.5 2.5 0 010 5z"/></svg>
-                    <input type="text" [(ngModel)]="deliveryAddress" placeholder="Ej. Av. Vallarta 123, Int 4" required />
+                    <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" class="input-icon"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 010-5 2.5 2.5 0 010 5z"/></svg>
+                    <input id="checkout-delivery-address" name="deliveryAddress" type="text" [(ngModel)]="deliveryAddress" placeholder="Ej. Av. Vallarta 123, Int 4" required autocomplete="street-address" />
                   </div>
                 </div>
               </div>
@@ -55,17 +55,17 @@ const DELIVERY_FEE = 25;
                 <span class="step-num">2</span>
                 <h3>Método de pago</h3>
               </div>
-              <div class="payment-options">
-                <button class="pay-option" [class.active]="paymentMethod === 'SIMULATED_CARD'" (click)="paymentMethod = 'SIMULATED_CARD'">
-                  <div class="pay-option__icon">💳</div>
+              <div class="payment-options" role="group" aria-label="Metodo de pago simulado">
+                <button type="button" class="pay-option" [class.active]="paymentMethod === 'SIMULATED_CARD'" [attr.aria-pressed]="paymentMethod === 'SIMULATED_CARD'" (click)="paymentMethod = 'SIMULATED_CARD'">
+                  <div class="pay-option__icon" aria-hidden="true">💳</div>
                   <div class="pay-option__text">
                     <strong>Tarjeta de Crédito/Débito</strong>
                     <span>Pago seguro instantáneo</span>
                   </div>
                   <div class="radio-circle"></div>
                 </button>
-                <button class="pay-option" [class.active]="paymentMethod === 'SIMULATED_CASH'" (click)="paymentMethod = 'SIMULATED_CASH'">
-                  <div class="pay-option__icon">💵</div>
+                <button type="button" class="pay-option" [class.active]="paymentMethod === 'SIMULATED_CASH'" [attr.aria-pressed]="paymentMethod === 'SIMULATED_CASH'" (click)="paymentMethod = 'SIMULATED_CASH'">
+                  <div class="pay-option__icon" aria-hidden="true">💵</div>
                   <div class="pay-option__text">
                     <strong>Efectivo al recibir</strong>
                     <span>Paga en el domicilio</span>
@@ -93,7 +93,7 @@ const DELIVERY_FEE = 25;
           </div>
 
           <!-- RIGHT: SUMMARY & PAY -->
-          <aside class="checkout-summary">
+          <aside class="checkout-summary" aria-label="Resumen de pago">
             <div class="summary-card">
               <h3>Resumen de pago</h3>
               <div class="summary-rows">
@@ -112,10 +112,10 @@ const DELIVERY_FEE = 25;
               </div>
 
               @if (errorMessage) {
-                <div class="error-msg anim-shake">{{ errorMessage }}</div>
+                <div class="error-msg anim-shake" role="alert">{{ errorMessage }}</div>
               }
 
-              <button class="confirm-btn" [disabled]="placingOrder || !deliveryAddress" (click)="confirmOrder()">
+              <button type="button" class="confirm-btn" [disabled]="placingOrder || !deliveryAddress" [attr.aria-busy]="placingOrder" (click)="confirmOrder()">
                 @if (placingOrder) {
                   <span class="loader"></span>
                 } @else {

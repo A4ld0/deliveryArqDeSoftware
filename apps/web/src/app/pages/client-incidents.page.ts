@@ -34,9 +34,9 @@ import type { IncidentItem, OrderSummary } from '../core/models';
           } @else {
             <form class="incident-form" (submit)="createIncident($event)">
               <div class="form-group">
-                <label>Selecciona tu pedido</label>
+                <label for="incident-order">Selecciona tu pedido</label>
                 <div class="select-wrapper">
-                  <select name="incidentOrderId" [(ngModel)]="incidentOrderId" required>
+                  <select id="incident-order" name="incidentOrderId" [(ngModel)]="incidentOrderId" required>
                     <option [ngValue]="null" disabled>Elige un pedido...</option>
                     @for (order of orders(); track order.id) {
                       <option [ngValue]="order.id">Pedido #{{ order.id }} — {{ order.status }}</option>
@@ -46,8 +46,9 @@ import type { IncidentItem, OrderSummary } from '../core/models';
               </div>
 
               <div class="form-group">
-                <label>Título del reporte</label>
+                <label for="incident-title">Título del reporte</label>
                 <input
+                  id="incident-title"
                   type="text"
                   name="incidentTitle"
                   [(ngModel)]="incidentTitle"
@@ -59,8 +60,9 @@ import type { IncidentItem, OrderSummary } from '../core/models';
               </div>
 
               <div class="form-group">
-                <label>Descripción detallada</label>
+                <label for="incident-description">Descripción detallada</label>
                 <textarea
+                  id="incident-description"
                   name="incidentDescription"
                   [(ngModel)]="incidentDescription"
                   required
@@ -72,13 +74,13 @@ import type { IncidentItem, OrderSummary } from '../core/models';
               </div>
 
               @if (errorMessage()) {
-                <div class="error-alert">{{ errorMessage() }}</div>
+                <div class="error-alert" role="alert">{{ errorMessage() }}</div>
               }
               @if (successMessage()) {
-                <div class="success-alert">{{ successMessage() }}</div>
+                <div class="success-alert" role="status" aria-live="polite">{{ successMessage() }}</div>
               }
 
-              <button type="submit" class="submit-btn" [disabled]="savingIncident() || !incidentOrderId">
+              <button type="submit" class="submit-btn" [disabled]="savingIncident() || !incidentOrderId" [attr.aria-busy]="savingIncident()">
                 @if (savingIncident()) { <span class="loader loader--sm"></span> }
                 @else { Enviar reporte }
               </button>
@@ -93,12 +95,12 @@ import type { IncidentItem, OrderSummary } from '../core/models';
               <span class="icon">📋</span>
               <h3>Mis Reportes</h3>
             </div>
-            <button class="icon-btn" (click)="loadIncidents()" [disabled]="loadingIncidents()">
-              <svg viewBox="0 0 24 24" [class.spinning]="loadingIncidents()"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.85.99 6.57 2.57L21 8M21 3v5h-5"/></svg>
+            <button type="button" class="icon-btn" (click)="loadIncidents()" [disabled]="loadingIncidents()" aria-label="Recargar incidencias">
+              <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" [class.spinning]="loadingIncidents()"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.85.99 6.57 2.57L21 8M21 3v5h-5"/></svg>
             </button>
           </header>
 
-          <div class="incidents-container">
+          <div class="incidents-container" aria-live="polite">
             @if (loadingIncidents() && !incidents().length) {
               <div class="list-loading"><span class="loader"></span></div>
             } @else if (!incidents().length) {

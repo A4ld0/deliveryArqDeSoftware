@@ -3,7 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../core/api.service';
-import type { AdminMetrics, AdminUser, IncidentItem, UserRole } from '../core/models';
+import type { AdminMetrics, AdminUser, IncidentItem, StatusCount, UserRole } from '../core/models';
 
 const INCIDENT_STATUSES = ['OPEN', 'IN_REVIEW', 'RESOLVED', 'CLOSED'] as const;
 type IncidentStatus = (typeof INCIDENT_STATUSES)[number];
@@ -13,222 +13,248 @@ type IncidentStatus = (typeof INCIDENT_STATUSES)[number];
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <section class="page">
+    <section class="admin-page anim-fade-in">
+      <header class="admin-hero">
+        <div class="admin-hero__content">
+          <span class="eyebrow">Panel administrativo</span>
+          <h2>Centro de control E4</h2>
+          <p>
+            Supervisa usuarios, pedidos e incidencias desde una vista limpia y consistente con la plataforma.
+          </p>
+        </div>
 
-      <!-- Page header -->
-      <div class="page-header">
-        <div class="page-header__left">
-          <div class="page-header__icon">⚙️</div>
+        <div class="admin-hero__actions">
+          <button type="button" class="refresh-action" (click)="loadData()" [disabled]="loading">
+            @if (loading) {
+              <span class="spinner"></span>
+              Actualizando
+            } @else {
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+                <path d="M21 12a9 9 0 1 1-2.64-6.36"/>
+                <path d="M21 3v6h-6"/>
+              </svg>
+              Recargar
+            }
+          </button>
+        </div>
+      </header>
+
+      @if (message) {
+        <div class="notice notice--success">
+          <span class="notice__dot"></span>
+          {{ message }}
+        </div>
+      }
+      @if (errorMessage) {
+        <div class="notice notice--error">
+          <span class="notice__dot"></span>
+          {{ errorMessage }}
+        </div>
+      }
+
+      <section class="summary-grid" aria-label="Resumen administrativo">
+        <article class="summary-card summary-card--orders">
+          <div class="summary-card__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+              <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/>
+              <path d="M3 6h18"/>
+              <path d="M16 10a4 4 0 0 1-8 0"/>
+            </svg>
+          </div>
           <div>
-            <h2>Panel de Administración</h2>
-            <p>Monitorea métricas, gestiona cuentas y resuelve incidencias de la plataforma.</p>
+            <span class="summary-label">Pedidos monitoreados</span>
+            <strong class="summary-value">{{ totalCount(metrics.ordersByStatus) }}</strong>
           </div>
-        </div>
-        <button type="button" class="btn btn--ghost btn--sm" (click)="loadData()" [disabled]="loading">
-          @if (loading) {
-            <span class="spinner"></span> Actualizando...
-          } @else {
-            ↻ Recargar datos
-          }
-        </button>
-      </div>
-
-      <!-- Metrics section -->
-      <div class="metrics-section">
-        <span class="section-label">Métricas en tiempo real</span>
-        <div class="metrics-grid">
-
-          <!-- Orders by status -->
-          <article class="metric-card">
-            <div class="metric-card__header">
-              <span class="metric-card__icon orders">📦</span>
-              <strong>Pedidos por estado</strong>
-            </div>
-            @if (!metrics.ordersByStatus.length) {
-              <span class="no-data">Sin datos registrados</span>
-            } @else {
-              <ul class="metric-list">
-                @for (item of metrics.ordersByStatus; track item.status) {
-                  <li class="metric-list__item">
-                    <span [class]="'status-pill ' + orderStatusClass(item.status)">
-                      {{ orderStatusLabel(item.status) }}
-                    </span>
-                    <strong class="metric-count">{{ item.count }}</strong>
-                  </li>
-                }
-              </ul>
+          <div class="summary-breakdown">
+            @for (item of metrics.ordersByStatus; track item.status) {
+              <span [class]="'mini-pill ' + orderStatusClass(item.status)">
+                {{ orderStatusLabel(item.status) }}: {{ item.count }}
+              </span>
+            } @empty {
+              <span class="muted-copy">Sin datos todavia</span>
             }
-          </article>
-
-          <!-- Incidents by status -->
-          <article class="metric-card">
-            <div class="metric-card__header">
-              <span class="metric-card__icon incidents">⚠️</span>
-              <strong>Incidencias por estado</strong>
-            </div>
-            @if (!metrics.incidentsByStatus.length) {
-              <span class="no-data">Sin datos registrados</span>
-            } @else {
-              <ul class="metric-list">
-                @for (item of metrics.incidentsByStatus; track item.status) {
-                  <li class="metric-list__item">
-                    <span [class]="'status-pill ' + incidentStatusClass(item.status)">
-                      {{ incidentStatusLabel(item.status) }}
-                    </span>
-                    <strong class="metric-count">{{ item.count }}</strong>
-                  </li>
-                }
-              </ul>
-            }
-          </article>
-
-          <!-- Users by role -->
-          <article class="metric-card">
-            <div class="metric-card__header">
-              <span class="metric-card__icon users">👥</span>
-              <strong>Usuarios por rol</strong>
-            </div>
-            @if (!metrics.usersByRole.length) {
-              <span class="no-data">Sin datos registrados</span>
-            } @else {
-              <ul class="metric-list">
-                @for (item of metrics.usersByRole; track item.role) {
-                  <li class="metric-list__item">
-                    <span class="role-chip" [class]="'role-chip--' + item.role">
-                      {{ roleLabel(item.role) }}
-                    </span>
-                    <strong class="metric-count">{{ item.count }}</strong>
-                  </li>
-                }
-              </ul>
-            }
-          </article>
-
-        </div>
-      </div>
-
-      <!-- Main content grid -->
-      <div class="content-grid">
-
-        <!-- Users management -->
-        <article class="card">
-          <div class="card-header">
-            <div class="card-header__left">
-              <h3>Gestión de usuarios</h3>
-              @if (users.length) {
-                <span class="count-badge">{{ users.length }}</span>
-              }
-            </div>
           </div>
+        </article>
+
+        <article class="summary-card summary-card--incidents">
+          <div class="summary-card__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+              <path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              <path d="M12 7v4"/>
+              <path d="M12 14h.01"/>
+            </svg>
+          </div>
+          <div>
+            <span class="summary-label">Incidencias abiertas</span>
+            <strong class="summary-value">{{ openIncidentCount() }}</strong>
+          </div>
+          <div class="summary-breakdown">
+            @for (item of metrics.incidentsByStatus; track item.status) {
+              <span [class]="'mini-pill ' + incidentStatusClass(item.status)">
+                {{ incidentStatusLabel(item.status) }}: {{ item.count }}
+              </span>
+            } @empty {
+              <span class="muted-copy">Operacion sin incidencias</span>
+            }
+          </div>
+        </article>
+
+        <article class="summary-card summary-card--users">
+          <div class="summary-card__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+          </div>
+          <div>
+            <span class="summary-label">Usuarios activos</span>
+            <strong class="summary-value">{{ activeUsersCount() }}</strong>
+          </div>
+          <div class="summary-breakdown">
+            @for (item of metrics.usersByRole; track item.role) {
+              <span [class]="'role-mini role-mini--' + item.role">
+                {{ roleLabel(item.role) }}: {{ item.count }}
+              </span>
+            } @empty {
+              <span class="muted-copy">Sin usuarios registrados</span>
+            }
+          </div>
+        </article>
+      </section>
+
+      <section class="admin-workspace">
+        <article class="panel panel--users">
+          <header class="panel-header">
+            <div>
+              <span class="panel-kicker">Cuentas</span>
+              <h3>Gestion de usuarios</h3>
+              <p>Administra roles y acceso sin salir del panel.</p>
+            </div>
+            <span class="panel-count">{{ users.length }} registros</span>
+          </header>
 
           @if (!users.length) {
             <div class="empty-state">
-              <span class="empty-state__icon">👤</span>
-              <p>No hay usuarios registrados en la plataforma.</p>
+              <span class="empty-state__badge">US</span>
+              <h4>No hay usuarios registrados</h4>
+              <p>Cuando se creen cuentas, apareceran aqui para administrarlas.</p>
             </div>
           } @else {
-            <ul class="user-list">
+            <div class="user-grid">
               @for (user of users; track user.auth_user_id) {
-                <li class="user-item">
-                  <div class="user-item__avatar">
-                    {{ initials(user.full_name) }}
-                  </div>
-                  <div class="user-item__info">
-                    <div class="user-item__row">
-                      <strong class="user-name">{{ user.full_name }}</strong>
-                      <div class="user-item__badges">
-                        <span class="role-chip" [class]="'role-chip--' + userRoleFor(user)">
-                          {{ roleLabel(userRoleFor(user)) }}
-                        </span>
-                        <span class="active-badge" [class.inactive]="!userIsActiveFor(user)">
-                          {{ userIsActiveFor(user) ? 'Activo' : 'Inactivo' }}
-                        </span>
-                      </div>
+                <article class="user-card">
+                  <div class="user-card__top">
+                    <div class="avatar-ring">{{ initials(user.full_name) }}</div>
+                    <div class="user-card__identity">
+                      <strong>{{ user.full_name }}</strong>
+                      <span>{{ user.email }}</span>
                     </div>
-                    <span class="user-email">{{ user.email }}</span>
+                    <div class="user-card__badges">
+                      <span [class]="'role-chip role-chip--' + userRoleFor(user)">
+                        {{ roleLabel(userRoleFor(user)) }}
+                      </span>
+                      <span class="active-badge" [class.active-badge--inactive]="!userIsActiveFor(user)">
+                        {{ userIsActiveFor(user) ? 'Activo' : 'Inactivo' }}
+                      </span>
+                    </div>
+                  </div>
 
-                    <div class="user-item__controls">
-                      <label class="control-label">
-                        <span class="label-text">Rol</span>
-                        <select
-                          [ngModel]="userRoleFor(user)"
-                          (ngModelChange)="setUserRoleDraft(user.auth_user_id, $event)"
-                        >
-                          @for (role of roles; track role) {
-                            <option [ngValue]="role">{{ roleLabel(role) }}</option>
-                          }
-                        </select>
-                      </label>
+                  <dl class="user-meta">
+                    <div>
+                      <dt>Telefono</dt>
+                      <dd>{{ user.phone || 'Sin telefono' }}</dd>
+                    </div>
+                    <div>
+                      <dt>Direccion</dt>
+                      <dd>{{ user.address || 'Sin direccion' }}</dd>
+                    </div>
+                  </dl>
 
-                      <label class="toggle-label">
-                        <input
-                          type="checkbox"
-                          [ngModel]="userIsActiveFor(user)"
-                          (ngModelChange)="setUserActiveDraft(user.auth_user_id, $event)"
-                          class="toggle-input"
-                        />
-                        <span class="toggle-track"><span class="toggle-thumb"></span></span>
-                        <span class="toggle-text">Cuenta activa</span>
-                      </label>
-
-                      <button
-                        type="button"
-                        class="btn btn--primary btn--xs"
-                        (click)="updateUser(user)"
-                        [disabled]="updatingUserId === user.auth_user_id"
+                  <div class="control-strip">
+                    <label class="field-control">
+                      <span>Rol</span>
+                      <select
+                        [ngModel]="userRoleFor(user)"
+                        (ngModelChange)="setUserRoleDraft(user.auth_user_id, $event)"
                       >
-                        @if (updatingUserId === user.auth_user_id) {
-                          <span class="spinner spinner--white"></span>
-                          Guardando...
-                        } @else {
-                          ✓ Guardar
+                        @for (role of roles; track role) {
+                          <option [ngValue]="role">{{ roleLabel(role) }}</option>
                         }
-                      </button>
-                    </div>
+                      </select>
+                    </label>
+
+                    <label class="switch-control">
+                      <input
+                        type="checkbox"
+                        [ngModel]="userIsActiveFor(user)"
+                        (ngModelChange)="setUserActiveDraft(user.auth_user_id, $event)"
+                      />
+                      <span class="switch-track"><span></span></span>
+                      <em>Cuenta activa</em>
+                    </label>
+
+                    <button
+                      type="button"
+                      class="save-action"
+                      (click)="updateUser(user)"
+                      [disabled]="updatingUserId === user.auth_user_id"
+                    >
+                      @if (updatingUserId === user.auth_user_id) {
+                        <span class="spinner spinner--white"></span>
+                        Guardando
+                      } @else {
+                        Guardar cambios
+                      }
+                    </button>
                   </div>
-                </li>
+                </article>
               }
-            </ul>
+            </div>
           }
         </article>
 
-        <!-- Incidents management -->
-        <article class="card">
-          <div class="card-header">
-            <div class="card-header__left">
-              <h3>Incidencias</h3>
-              @if (incidents.length) {
-                <span class="count-badge">{{ incidents.length }}</span>
-              }
+        <article class="panel panel--incidents">
+          <header class="panel-header">
+            <div>
+              <span class="panel-kicker">Soporte</span>
+              <h3>Incidencias reportadas</h3>
+              <p>Prioriza, revisa y cierra reportes de clientes.</p>
             </div>
-          </div>
+            <span class="panel-count">{{ incidents.length }} reportes</span>
+          </header>
 
           @if (!incidents.length) {
             <div class="empty-state">
-              <span class="empty-state__icon">✅</span>
+              <span class="empty-state__badge">OK</span>
+              <h4>Todo en orden</h4>
               <p>No hay incidencias registradas actualmente.</p>
             </div>
           } @else {
-            <ul class="incident-list">
+            <div class="incident-stack">
               @for (incident of incidents; track incident.id) {
-                <li class="incident-item">
-                  <div class="incident-item__header">
-                    <div class="incident-item__id">
-                      <span class="incident-num">#{{ incident.id }}</span>
-                      <span [class]="'status-pill ' + incidentStatusClass(incident.status)">
-                        {{ incidentStatusLabel(incident.status) }}
-                      </span>
+                <article class="incident-card">
+                  <header class="incident-card__header">
+                    <div>
+                      <span class="incident-number">Incidencia #{{ incident.id }}</span>
+                      <strong>{{ incident.title }}</strong>
                     </div>
-                    <span class="incident-meta">Pedido #{{ incident.order_id }}</span>
+                    <span [class]="'status-pill ' + incidentStatusClass(incident.status)">
+                      {{ incidentStatusLabel(incident.status) }}
+                    </span>
+                  </header>
+
+                  <p>{{ incident.description }}</p>
+
+                  <div class="incident-meta-grid">
+                    <span>Pedido #{{ incident.order_id }}</span>
+                    <span>Reportado por {{ incident.reported_by }}</span>
                   </div>
 
-                  <strong class="incident-title">{{ incident.title }}</strong>
-                  <p class="incident-desc">{{ incident.description }}</p>
-                  <span class="incident-reporter">Reportado por: {{ incident.reported_by }}</span>
-
-                  <div class="incident-item__controls">
-                    <label class="control-label">
-                      <span class="label-text">Cambiar estado</span>
+                  <div class="incident-actions">
+                    <label class="field-control">
+                      <span>Nuevo estado</span>
                       <select
                         [ngModel]="incidentStatusFor(incident)"
                         (ngModelChange)="setIncidentStatusDraft(incident.id, $event)"
@@ -238,610 +264,625 @@ type IncidentStatus = (typeof INCIDENT_STATUSES)[number];
                         }
                       </select>
                     </label>
+
                     <button
                       type="button"
-                      class="btn btn--primary btn--xs"
+                      class="save-action save-action--compact"
                       (click)="updateIncident(incident)"
                       [disabled]="updatingIncidentId === incident.id"
                     >
                       @if (updatingIncidentId === incident.id) {
                         <span class="spinner spinner--white"></span>
-                        Guardando...
+                        Actualizando
                       } @else {
-                        ✓ Actualizar
+                        Actualizar
                       }
                     </button>
                   </div>
-                </li>
+                </article>
               }
-            </ul>
+            </div>
           }
         </article>
-
-      </div>
-
-      @if (message) {
-        <div class="alert alert--success">
-          <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
-          {{ message }}
-        </div>
-      }
-      @if (errorMessage) {
-        <div class="alert alert--error">
-          <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
-          {{ errorMessage }}
-        </div>
-      }
+      </section>
     </section>
   `,
   styles: `
-    /* ── Page layout ── */
-    .page {
+    .admin-page {
+      --admin-bg: #f7f7f7;
+      --admin-surface: #ffffff;
+      --admin-surface-soft: #fff7f2;
+      --admin-ink: #12100f;
+      --admin-muted: #74645d;
+      --admin-line: #ead8cd;
+      --admin-line-strong: #f1bba1;
+      --admin-primary: var(--primary, #ff441f);
+      --admin-primary-strong: var(--primary-strong, #e63916);
+      --admin-shadow: 0 22px 70px rgba(84, 50, 30, 0.12);
       display: grid;
-      gap: var(--space-5);
+      gap: 1.5rem;
+      color: var(--admin-ink);
     }
 
-    /* ── Page header ── */
-    .page-header {
+    .admin-hero,
+    .summary-card,
+    .panel,
+    .notice {
+      border: 1px solid var(--admin-line);
+      background: rgba(255, 255, 255, 0.9);
+      box-shadow: var(--admin-shadow);
+    }
+
+    .admin-hero {
       display: flex;
-      align-items: flex-start;
       justify-content: space-between;
-      gap: var(--space-4);
-      flex-wrap: wrap;
-      padding: var(--space-5);
-      border: 1px solid var(--line);
-      border-radius: var(--radius-lg);
-      background: linear-gradient(135deg, var(--surface) 0%, #f5f3ff 100%);
-    }
-
-    .page-header__left {
-      display: flex;
-      align-items: flex-start;
-      gap: var(--space-4);
-    }
-
-    .page-header__icon {
-      font-size: 1.6rem;
-      line-height: 1;
-      flex-shrink: 0;
-      width: 3rem;
-      height: 3rem;
-      background: linear-gradient(145deg, #7c3aed 0%, #6d28d9 100%);
-      border-radius: var(--radius-sm);
-      display: grid;
-      place-items: center;
-      box-shadow: 0 4px 14px rgba(124, 58, 237, 0.25);
-    }
-
-    .page-header h2 { font-size: clamp(1.15rem, 1.4vw, 1.45rem); margin: 0; }
-    .page-header p { margin: var(--space-1) 0 0; color: var(--muted); font-size: 0.88rem; line-height: 1.5; }
-
-    /* ── Metrics section ── */
-    .metrics-section {
-      display: grid;
-      gap: var(--space-3);
-    }
-
-    .section-label {
-      font-size: 0.76rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.07em;
-      color: var(--muted);
-    }
-
-    .metrics-grid {
-      display: grid;
-      gap: var(--space-3);
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    }
-
-    .metric-card {
-      border: 1px solid var(--line);
-      border-radius: var(--radius-md);
-      background: var(--panel);
-      padding: var(--space-4);
-      display: grid;
-      gap: var(--space-3);
-    }
-
-    .metric-card__header {
-      display: flex;
+      gap: 1.5rem;
       align-items: center;
-      gap: var(--space-2);
+      padding: clamp(1.5rem, 3vw, 2.25rem);
+      border-radius: 32px;
+      background:
+        radial-gradient(circle at top right, rgba(255, 68, 31, 0.22), transparent 34%),
+        linear-gradient(135deg, #ffffff 0%, #fff4ec 100%);
+      overflow: hidden;
+      position: relative;
     }
 
-    .metric-card__header strong {
-      font-size: 0.9rem;
-      font-weight: 700;
-      color: var(--ink);
+    .admin-hero::after {
+      content: '';
+      position: absolute;
+      width: 15rem;
+      height: 15rem;
+      right: -7rem;
+      bottom: -8rem;
+      border-radius: 50%;
+      border: 38px solid rgba(255, 68, 31, 0.08);
+      pointer-events: none;
     }
 
-    .metric-card__icon {
-      font-size: 1.2rem;
-      line-height: 1;
-      width: 2.2rem;
-      height: 2.2rem;
-      border-radius: var(--radius-xs);
-      display: grid;
-      place-items: center;
-      flex-shrink: 0;
-    }
-
-    .metric-card__icon.orders   { background: #fff7ed; }
-    .metric-card__icon.incidents { background: #fef2f2; }
-    .metric-card__icon.users    { background: #f5f3ff; }
-
-    .metric-list {
-      list-style: none;
-      margin: 0;
-      padding: 0;
-      display: grid;
-      gap: var(--space-2);
-    }
-
-    .metric-list__item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: var(--space-2);
-    }
-
-    .metric-count {
-      font-size: 1.1rem;
-      font-weight: 800;
-      color: var(--ink);
-      flex-shrink: 0;
-    }
-
-    .no-data {
-      font-size: 0.84rem;
-      color: var(--muted-2);
-      font-style: italic;
-    }
-
-    /* ── Content grid ── */
-    .content-grid {
-      display: grid;
-      gap: var(--space-4);
-    }
-
-    /* ── Card ── */
-    .card {
-      border: 1px solid var(--line);
-      border-radius: var(--radius-lg);
-      background: var(--panel);
-      padding: var(--space-5);
-      display: grid;
-      gap: var(--space-4);
-    }
-
-    .card-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: var(--space-3);
-      flex-wrap: wrap;
-    }
-
-    .card-header__left {
-      display: flex;
-      align-items: center;
-      gap: var(--space-3);
-    }
-
-    h3 { margin: 0; }
-
-    .count-badge {
+    .admin-hero__content { max-width: 720px; position: relative; z-index: 1; }
+    .eyebrow,
+    .panel-kicker {
       display: inline-flex;
       align-items: center;
-      padding: 0.2rem 0.6rem;
-      border-radius: 999px;
-      font-size: 0.75rem;
-      font-weight: 700;
-      background: var(--primary-soft);
-      border: 1px solid var(--primary-muted);
-      color: var(--primary-strong);
+      width: fit-content;
+      padding: 0.38rem 0.75rem;
+      border-radius: 99px;
+      background: #fff0ed;
+      color: var(--admin-primary-strong);
+      border: 1px solid #ffd4c7;
+      font-size: 0.72rem;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
     }
 
-    /* ── Buttons ── */
-    .btn {
+    .admin-hero h2 {
+      margin: 0.8rem 0 0;
+      font-size: clamp(2rem, 4vw, 3.8rem);
+      line-height: 0.98;
+      letter-spacing: -0.06em;
+    }
+
+    .admin-hero p {
+      margin: 1rem 0 0;
+      color: var(--admin-muted);
+      max-width: 680px;
+      font-size: clamp(1rem, 1.5vw, 1.18rem);
+      line-height: 1.55;
+      font-weight: 650;
+    }
+
+    .admin-hero__actions { position: relative; z-index: 1; display: flex; align-items: center; }
+
+    .refresh-action,
+    .save-action {
+      border: 0;
+      border-radius: 999px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 0.4rem;
-      border: 0;
-      border-radius: 999px;
-      padding: 0.55rem 1rem;
-      font-weight: 700;
-      font-size: 0.88rem;
-      font-family: inherit;
+      gap: 0.55rem;
+      font-weight: 900;
+      font-size: 0.94rem;
+      min-height: 48px;
+      padding: 0.85rem 1.25rem;
       cursor: pointer;
-      transition: all 0.18s ease;
+      transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
     }
 
-    .btn--primary {
-      background: linear-gradient(145deg, var(--primary) 0%, var(--primary-strong) 100%);
-      color: #fff;
-      box-shadow: 0 3px 10px rgba(248, 92, 35, 0.22);
+    .refresh-action {
+      color: var(--admin-ink);
+      background: #ffffff;
+      border: 1.5px solid var(--admin-line-strong);
     }
 
-    .btn--primary:hover:not([disabled]) {
-      transform: translateY(-1px);
-      box-shadow: 0 6px 18px rgba(248, 92, 35, 0.3);
+    .refresh-action svg { width: 1.1rem; height: 1.1rem; }
+    .refresh-action:hover:not(:disabled),
+    .save-action:hover:not(:disabled) { transform: translateY(-2px); }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1rem;
     }
 
-    .btn--ghost {
-      background: var(--surface-alt);
-      border: 1px solid var(--line);
-      color: var(--ink);
+    .summary-card {
+      min-height: 220px;
+      border-radius: 28px;
+      padding: 1.35rem;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 1rem;
+      align-content: start;
+      position: relative;
+      overflow: hidden;
     }
 
-    .btn--ghost:hover:not([disabled]) {
-      border-color: var(--line-strong);
-      background: var(--surface);
-    }
-
-    .btn--sm { padding: 0.38rem 0.8rem; font-size: 0.82rem; }
-    .btn--xs { padding: 0.28rem 0.65rem; font-size: 0.76rem; min-height: auto; }
-    .btn[disabled] { opacity: 0.5; cursor: not-allowed; }
-
-    /* ── Role chips ── */
-    .role-chip {
-      display: inline-flex;
-      align-items: center;
-      padding: 0.2rem 0.6rem;
+    .summary-card::after {
+      content: '';
+      position: absolute;
+      inset: auto -3rem -4rem auto;
+      width: 10rem;
+      height: 10rem;
       border-radius: 999px;
-      font-size: 0.72rem;
-      font-weight: 700;
-      letter-spacing: 0.03em;
-      border: 1px solid transparent;
+      background: rgba(255, 68, 31, 0.08);
     }
 
-    .role-chip--client     { background: #fff7ed; color: #9a3412; border-color: #fed7aa; }
-    .role-chip--restaurant { background: #fef9ee; color: #854d0e; border-color: #fde68a; }
-    .role-chip--driver     { background: #eff6ff; color: #1e3a8a; border-color: #bfdbfe; }
-    .role-chip--admin      { background: #f5f3ff; color: #5b21b6; border-color: #ddd6fe; }
+    .summary-card__icon {
+      width: 3.2rem;
+      height: 3.2rem;
+      border-radius: 20px;
+      display: grid;
+      place-items: center;
+      color: #ffffff;
+      background: var(--admin-ink);
+      box-shadow: 0 14px 32px rgba(0, 0, 0, 0.14);
+    }
 
-    /* ── Active badge ── */
+    .summary-card__icon svg { width: 1.35rem; height: 1.35rem; }
+    .summary-card--orders .summary-card__icon { background: var(--admin-primary); }
+    .summary-card--incidents .summary-card__icon { background: #b91c1c; }
+    .summary-card--users .summary-card__icon { background: #0f766e; }
+
+    .summary-label,
+    .panel-count,
+    .muted-copy {
+      color: var(--admin-muted);
+      font-size: 0.82rem;
+      font-weight: 800;
+    }
+
+    .summary-value {
+      display: block;
+      margin-top: 0.1rem;
+      font-size: 2.65rem;
+      line-height: 1;
+      letter-spacing: -0.06em;
+    }
+
+    .summary-breakdown {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .mini-pill,
+    .role-mini,
+    .role-chip,
+    .status-pill,
     .active-badge {
       display: inline-flex;
       align-items: center;
-      padding: 0.2rem 0.55rem;
-      border-radius: 999px;
-      font-size: 0.7rem;
-      font-weight: 700;
-      letter-spacing: 0.03em;
-      background: #ecfdf5;
-      border: 1px solid #a7f3d0;
-      color: #065f46;
-    }
-
-    .active-badge.inactive {
-      background: #f8fafc;
-      border-color: var(--line);
-      color: var(--muted);
-    }
-
-    /* ── Status pills ── */
-    .status-pill {
-      display: inline-flex;
-      align-items: center;
-      padding: 0.18rem 0.6rem;
-      border-radius: 999px;
-      font-size: 0.7rem;
-      font-weight: 700;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
+      width: fit-content;
       border: 1px solid transparent;
+      border-radius: 999px;
+      white-space: nowrap;
+      font-weight: 900;
     }
 
-    .status-pill.pending    { background: #fffbeb; color: #92400e; border-color: #fde68a; }
-    .status-pill.accepted   { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
-    .status-pill.ready      { background: #f0fdf4; color: #166534; border-color: #bbf7d0; }
-    .status-pill.assigned   { background: #eff6ff; color: #1e3a8a; border-color: #bfdbfe; }
-    .status-pill.in-transit { background: #eef2ff; color: #3730a3; border-color: #c7d2fe; }
-    .status-pill.delivered  { background: #ecfdf5; color: #065f46; border-color: #6ee7b7; }
-    .status-pill.rejected   { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
-    .status-pill.cancelled  { background: #f8fafc; color: #475569; border-color: #cbd5e1; }
-
-    .status-pill.open       { background: #fff7ed; color: #9a3412; border-color: #fed7aa; }
-    .status-pill.in-review  { background: #faf5ff; color: #6b21a8; border-color: #e9d5ff; }
-    .status-pill.resolved   { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
-    .status-pill.closed     { background: #f8fafc; color: #475569; border-color: #cbd5e1; }
-    .status-pill.default    { background: var(--surface); color: var(--muted); border-color: var(--line); }
-
-    /* ── User list ── */
-    .user-list {
-      list-style: none;
-      margin: 0;
-      padding: 0;
-      display: grid;
-      gap: var(--space-3);
+    .mini-pill,
+    .role-mini {
+      padding: 0.28rem 0.62rem;
+      font-size: 0.72rem;
     }
 
-    .user-item {
+    .admin-workspace {
       display: grid;
-      grid-template-columns: 2.6rem 1fr;
-      gap: var(--space-3);
-      border: 1px solid var(--line);
-      border-radius: var(--radius-md);
-      background: var(--surface-alt);
-      padding: var(--space-4);
+      grid-template-columns: minmax(0, 1.2fr) minmax(360px, 0.8fr);
+      gap: 1rem;
       align-items: start;
     }
 
-    .user-item__avatar {
-      width: 2.6rem;
-      height: 2.6rem;
-      border-radius: 50%;
-      background: linear-gradient(145deg, var(--primary-soft) 0%, var(--primary-muted) 100%);
-      border: 1.5px solid var(--primary-muted);
+    .panel {
+      border-radius: 32px;
+      padding: clamp(1.25rem, 2vw, 1.75rem);
       display: grid;
-      place-items: center;
-      font-size: 0.8rem;
-      font-weight: 800;
-      color: var(--primary-strong);
-      flex-shrink: 0;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
+      gap: 1.15rem;
     }
 
-    .user-item__info {
-      display: grid;
-      gap: var(--space-2);
-      min-width: 0;
-    }
-
-    .user-item__row {
+    .panel-header {
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
-      gap: var(--space-2);
-      flex-wrap: wrap;
+      gap: 1rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--admin-line);
     }
 
-    .user-name {
-      font-size: 0.94rem;
-      font-weight: 700;
-      color: var(--ink);
+    .panel-header h3 {
+      margin: 0.7rem 0 0;
+      font-size: clamp(1.35rem, 2vw, 1.75rem);
+      letter-spacing: -0.04em;
     }
 
-    .user-item__badges {
-      display: flex;
-      align-items: center;
-      gap: var(--space-1);
-      flex-wrap: wrap;
+    .panel-header p {
+      margin: 0.35rem 0 0;
+      color: var(--admin-muted);
+      font-weight: 650;
+    }
+
+    .panel-count {
+      border: 1px solid var(--admin-line);
+      background: #fffaf7;
+      padding: 0.5rem 0.8rem;
+      border-radius: 999px;
       flex-shrink: 0;
     }
 
-    .user-email {
-      font-size: 0.82rem;
-      color: var(--muted);
-      font-weight: 500;
-    }
-
-    .user-item__controls {
-      display: flex;
-      align-items: flex-end;
-      gap: var(--space-3);
-      flex-wrap: wrap;
-      margin-top: var(--space-1);
-      padding-top: var(--space-3);
-      border-top: 1px solid var(--line);
-    }
-
-    /* ── Form controls ── */
-    .control-label {
+    .user-grid,
+    .incident-stack {
       display: grid;
+      gap: 0.9rem;
+    }
+
+    .user-card,
+    .incident-card {
+      border: 1px solid var(--admin-line);
+      border-radius: 26px;
+      background: linear-gradient(180deg, #ffffff 0%, #fffaf7 100%);
+      padding: 1rem;
+    }
+
+    .user-card__top {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: start;
+      gap: 0.9rem;
+    }
+
+    .avatar-ring {
+      width: 3rem;
+      height: 3rem;
+      border-radius: 18px;
+      display: grid;
+      place-items: center;
+      color: var(--admin-primary-strong);
+      background: #fff0ed;
+      border: 1.5px solid #ffd4c7;
+      font-weight: 950;
+      letter-spacing: -0.04em;
+    }
+
+    .user-card__identity { display: grid; min-width: 0; }
+    .user-card__identity strong {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 1rem;
+    }
+    .user-card__identity span {
+      color: var(--admin-muted);
+      font-size: 0.82rem;
+      font-weight: 700;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .user-card__badges {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      flex-wrap: wrap;
       gap: 0.35rem;
     }
 
-    .label-text {
-      font-size: 0.78rem;
-      font-weight: 600;
-      color: var(--ink-2);
+    .role-chip,
+    .active-badge,
+    .status-pill {
+      padding: 0.26rem 0.62rem;
+      font-size: 0.7rem;
+    }
+
+    .role-chip--client,
+    .role-mini--client { background: #fff7ed; color: #9a3412; border-color: #fed7aa; }
+    .role-chip--restaurant,
+    .role-mini--restaurant { background: #fef9ee; color: #854d0e; border-color: #fde68a; }
+    .role-chip--driver,
+    .role-mini--driver { background: #eff6ff; color: #1e3a8a; border-color: #bfdbfe; }
+    .role-chip--admin,
+    .role-mini--admin { background: #f5f3ff; color: #5b21b6; border-color: #ddd6fe; }
+
+    .active-badge { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
+    .active-badge--inactive { background: #f8fafc; color: #64748b; border-color: #cbd5e1; }
+
+    .user-meta {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.75rem;
+      margin: 1rem 0 0;
+    }
+
+    .user-meta div {
+      border: 1px solid var(--admin-line);
+      border-radius: 18px;
+      padding: 0.75rem;
+      background: rgba(255, 255, 255, 0.72);
+      min-width: 0;
+    }
+
+    .user-meta dt {
+      margin: 0;
+      color: var(--admin-muted);
+      font-size: 0.68rem;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .user-meta dd {
+      margin: 0.2rem 0 0;
+      font-size: 0.86rem;
+      font-weight: 800;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .control-strip,
+    .incident-actions {
+      display: grid;
+      grid-template-columns: minmax(160px, 1fr) auto auto;
+      gap: 0.75rem;
+      align-items: end;
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--admin-line);
+    }
+
+    .field-control {
+      display: grid;
+      gap: 0.38rem;
+      min-width: 0;
+    }
+
+    .field-control span,
+    .switch-control em {
+      color: var(--admin-muted);
+      font-size: 0.72rem;
+      font-style: normal;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
     }
 
     select {
-      border: 1.5px solid var(--line);
-      border-radius: var(--radius-sm);
-      padding: 0.48rem 0.72rem;
+      width: 100%;
+      border: 1.5px solid var(--admin-line);
+      border-radius: 16px;
+      background: #ffffff;
+      color: var(--admin-ink);
+      padding: 0.75rem 0.9rem;
       font: inherit;
-      font-size: 0.86rem;
-      background: var(--surface);
-      color: var(--ink);
-      transition: border-color 0.15s, box-shadow 0.15s;
-      min-height: 38px;
+      font-weight: 800;
+      min-height: 46px;
     }
-
-    select:hover { border-color: var(--line-strong); }
 
     select:focus {
       outline: none;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(248, 92, 35, 0.12);
+      border-color: var(--admin-primary);
+      box-shadow: 0 0 0 4px rgba(255, 68, 31, 0.12);
     }
 
-    /* ── Toggle switch ── */
-    .toggle-label {
+    .switch-control {
       display: flex;
       align-items: center;
-      gap: var(--space-2);
+      gap: 0.55rem;
+      min-height: 48px;
       cursor: pointer;
-      user-select: none;
     }
 
-    .toggle-input { display: none; }
-
-    .toggle-track {
-      width: 2.4rem;
-      height: 1.3rem;
+    .switch-control input { display: none; }
+    .switch-track {
+      width: 2.7rem;
+      height: 1.5rem;
       border-radius: 999px;
-      background: var(--line-strong);
-      position: relative;
+      background: #cbd5e1;
+      padding: 3px;
       transition: background 0.2s ease;
       flex-shrink: 0;
     }
-
-    .toggle-input:checked + .toggle-track {
-      background: var(--success);
-    }
-
-    .toggle-thumb {
-      position: absolute;
-      top: 2px;
-      left: 2px;
-      width: 0.95rem;
-      height: 0.95rem;
+    .switch-track span {
+      display: block;
+      width: 1.1rem;
+      height: 1.1rem;
       border-radius: 50%;
-      background: #fff;
+      background: #ffffff;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
       transition: transform 0.2s ease;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+    }
+    .switch-control input:checked + .switch-track { background: #0f766e; }
+    .switch-control input:checked + .switch-track span { transform: translateX(1.18rem); }
+
+    .save-action {
+      background: var(--admin-primary);
+      color: #ffffff;
+      box-shadow: 0 12px 24px rgba(255, 68, 31, 0.22);
     }
 
-    .toggle-input:checked + .toggle-track .toggle-thumb {
-      transform: translateX(1.1rem);
-    }
+    .save-action--compact { padding-inline: 1rem; }
 
-    .toggle-text {
-      font-size: 0.84rem;
-      font-weight: 600;
-      color: var(--ink-2);
-    }
-
-    /* ── Incident list ── */
-    .incident-list {
-      list-style: none;
-      margin: 0;
-      padding: 0;
+    .incident-card {
       display: grid;
-      gap: var(--space-3);
+      gap: 0.8rem;
     }
 
-    .incident-item {
-      border: 1px solid var(--line);
-      border-radius: var(--radius-md);
-      background: var(--surface-alt);
-      padding: var(--space-4);
-      display: grid;
-      gap: var(--space-2);
-    }
-
-    .incident-item__header {
+    .incident-card__header {
       display: flex;
-      align-items: center;
       justify-content: space-between;
-      gap: var(--space-2);
-      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: 1rem;
     }
 
-    .incident-item__id {
-      display: flex;
-      align-items: center;
-      gap: var(--space-2);
+    .incident-card__header div { display: grid; gap: 0.25rem; }
+    .incident-number {
+      color: var(--admin-primary-strong);
+      font-size: 0.72rem;
+      font-weight: 950;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
     }
 
-    .incident-num {
-      font-weight: 800;
-      font-size: 0.9rem;
-      color: var(--ink);
-    }
-
-    .incident-meta {
-      font-size: 0.78rem;
-      color: var(--muted);
-      font-weight: 500;
-    }
-
-    .incident-title {
-      font-size: 0.94rem;
-      font-weight: 700;
-      color: var(--ink);
-      line-height: 1.3;
-    }
-
-    .incident-desc {
+    .incident-card p {
       margin: 0;
-      font-size: 0.84rem;
-      color: var(--muted);
+      color: var(--admin-muted);
+      font-weight: 650;
       line-height: 1.5;
     }
 
-    .incident-reporter {
-      font-size: 0.78rem;
-      color: var(--muted-2);
-      font-weight: 500;
-    }
-
-    .incident-item__controls {
+    .incident-meta-grid {
       display: flex;
-      align-items: flex-end;
-      gap: var(--space-3);
       flex-wrap: wrap;
-      padding-top: var(--space-3);
-      border-top: 1px solid var(--line);
-      margin-top: var(--space-1);
+      gap: 0.5rem;
     }
 
-    /* ── Empty state ── */
+    .incident-meta-grid span {
+      border: 1px solid var(--admin-line);
+      background: #ffffff;
+      color: var(--admin-muted);
+      border-radius: 999px;
+      padding: 0.34rem 0.65rem;
+      font-size: 0.76rem;
+      font-weight: 850;
+    }
+
+    .incident-actions { grid-template-columns: minmax(170px, 1fr) auto; }
+
+    .status-pill.pending,
+    .mini-pill.pending { background: #fffbeb; color: #92400e; border-color: #fde68a; }
+    .status-pill.accepted,
+    .mini-pill.accepted { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
+    .status-pill.ready,
+    .mini-pill.ready { background: #f0fdf4; color: #166534; border-color: #bbf7d0; }
+    .status-pill.assigned,
+    .mini-pill.assigned { background: #eff6ff; color: #1e3a8a; border-color: #bfdbfe; }
+    .status-pill.in-transit,
+    .mini-pill.in-transit { background: #eef2ff; color: #3730a3; border-color: #c7d2fe; }
+    .status-pill.delivered,
+    .mini-pill.delivered { background: #ecfdf5; color: #065f46; border-color: #6ee7b7; }
+    .status-pill.rejected,
+    .mini-pill.rejected { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
+    .status-pill.cancelled,
+    .mini-pill.cancelled { background: #f8fafc; color: #475569; border-color: #cbd5e1; }
+    .status-pill.open,
+    .mini-pill.open { background: #fff7ed; color: #9a3412; border-color: #fed7aa; }
+    .status-pill.in-review,
+    .mini-pill.in-review { background: #faf5ff; color: #6b21a8; border-color: #e9d5ff; }
+    .status-pill.resolved,
+    .mini-pill.resolved { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
+    .status-pill.closed,
+    .mini-pill.closed { background: #f8fafc; color: #475569; border-color: #cbd5e1; }
+    .status-pill.default,
+    .mini-pill.default { background: #f8fafc; color: #475569; border-color: #cbd5e1; }
+
     .empty-state {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: var(--space-2);
-      padding: var(--space-6) 0;
+      min-height: 270px;
+      border: 1px dashed var(--admin-line-strong);
+      border-radius: 26px;
+      display: grid;
+      place-items: center;
+      align-content: center;
+      gap: 0.55rem;
       text-align: center;
+      background: #fffaf7;
+      padding: 2rem;
     }
 
-    .empty-state__icon { font-size: 2.5rem; line-height: 1; }
-    .empty-state p { margin: 0; color: var(--muted); font-size: 0.9rem; }
+    .empty-state__badge {
+      width: 3.4rem;
+      height: 3.4rem;
+      border-radius: 20px;
+      display: grid;
+      place-items: center;
+      color: #ffffff;
+      background: var(--admin-ink);
+      font-weight: 950;
+    }
 
-    /* ── Spinner ── */
-    .spinner {
-      width: 0.9rem;
-      height: 0.9rem;
-      border: 2px solid rgba(100, 60, 30, 0.2);
-      border-top-color: var(--primary);
+    .empty-state h4 { margin: 0; font-size: 1.1rem; }
+    .empty-state p { margin: 0; color: var(--admin-muted); font-weight: 650; }
+
+    .notice {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      padding: 0.95rem 1.1rem;
+      border-radius: 20px;
+      font-weight: 850;
+    }
+
+    .notice__dot {
+      width: 0.7rem;
+      height: 0.7rem;
       border-radius: 50%;
-      animation: spin 0.6s linear infinite;
       flex-shrink: 0;
     }
 
-    .spinner--white {
-      border-color: rgba(255, 255, 255, 0.35);
-      border-top-color: #fff;
+    .notice--success { color: #065f46; background: #ecfdf5; border-color: #a7f3d0; }
+    .notice--success .notice__dot { background: #10b981; }
+    .notice--error { color: #991b1b; background: #fef2f2; border-color: #fecaca; }
+    .notice--error .notice__dot { background: #ef4444; }
+
+    .spinner {
+      width: 1rem;
+      height: 1rem;
+      border: 2px solid rgba(0, 0, 0, 0.18);
+      border-top-color: currentColor;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
     }
 
+    .spinner--white { border-color: rgba(255, 255, 255, 0.36); border-top-color: #ffffff; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ── Alerts ── */
-    .alert {
-      display: flex;
-      align-items: flex-start;
-      gap: 0.55rem;
-      padding: 0.75rem 1rem;
-      border-radius: var(--radius-sm);
-      font-weight: 600;
-      font-size: 0.9rem;
+    @media (max-width: 1180px) {
+      .summary-grid,
+      .admin-workspace { grid-template-columns: 1fr; }
+      .summary-card { min-height: auto; }
     }
 
-    .alert svg {
-      width: 1.1rem;
-      height: 1.1rem;
-      flex-shrink: 0;
-      margin-top: 0.05rem;
-    }
-
-    .alert--success { background: var(--success-soft); border: 1px solid #a7f3d0; color: #065f46; }
-    .alert--error   { background: var(--danger-soft);  border: 1px solid #fecaca; color: var(--danger); }
-
-    /* ── Responsive ── */
-    @media (min-width: 900px) {
-      .content-grid {
-        grid-template-columns: 1fr 1fr;
-        align-items: start;
-      }
+    @media (max-width: 720px) {
+      .admin-page { gap: 1rem; }
+      .admin-hero,
+      .panel { border-radius: 24px; }
+      .admin-hero { align-items: stretch; flex-direction: column; }
+      .admin-hero__actions { width: 100%; }
+      .refresh-action { width: 100%; }
+      .summary-grid { gap: 0.8rem; }
+      .summary-card { border-radius: 22px; }
+      .panel-header,
+      .incident-card__header { flex-direction: column; }
+      .user-card__top { grid-template-columns: auto minmax(0, 1fr); }
+      .user-card__badges { grid-column: 1 / -1; justify-content: flex-start; }
+      .user-meta,
+      .control-strip,
+      .incident-actions { grid-template-columns: 1fr; }
+      .save-action { width: 100%; }
     }
   `
 })
@@ -869,6 +910,20 @@ export class AdminDashboardPageComponent {
 
   constructor(private readonly apiService: ApiService) {
     void this.loadData();
+  }
+
+  protected totalCount(items: StatusCount[]): number {
+    return items.reduce((total, item) => total + Number(item.count || 0), 0);
+  }
+
+  protected openIncidentCount(): number {
+    return this.metrics.incidentsByStatus
+      .filter((item) => item.status === 'OPEN' || item.status === 'IN_REVIEW')
+      .reduce((total, item) => total + Number(item.count || 0), 0);
+  }
+
+  protected activeUsersCount(): number {
+    return this.users.filter((user) => user.is_active).length;
   }
 
   protected initials(fullName: string): string {

@@ -4,7 +4,7 @@ import * as L from 'leaflet';
 @Component({
   selector: 'app-order-map',
   standalone: true,
-  template: `<div #mapContainer class="map-container"></div>`,
+  template: `<div #mapContainer class="map-container" role="img" [attr.aria-label]="'Mapa con ubicacion aproximada del repartidor. Latitud ' + lat + ', longitud ' + lng"></div>`,
   styles: `
     .map-container {
       height: 250px;

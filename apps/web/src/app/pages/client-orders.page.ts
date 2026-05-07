@@ -31,8 +31,8 @@ const STATUS_INDEX: Record<string, number> = {
           <h1>Mis Pedidos</h1>
           <p>Sigue el estado de tus entregas en tiempo real</p>
         </div>
-        <button class="refresh-btn" (click)="loadOrders()" [disabled]="loadingOrders()">
-          <svg viewBox="0 0 24 24" [class.spinning]="loadingOrders()"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.85.99 6.57 2.57L21 8M21 3v5h-5"/></svg>
+        <button type="button" class="refresh-btn" (click)="loadOrders()" [disabled]="loadingOrders()" aria-label="Actualizar pedidos">
+          <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" [class.spinning]="loadingOrders()"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.85.99 6.57 2.57L21 8M21 3v5h-5"/></svg>
           Actualizar
         </button>
       </header>
@@ -50,9 +50,9 @@ const STATUS_INDEX: Record<string, number> = {
           <button class="primary-btn" routerLink="/">Explorar restaurantes</button>
         </div>
       } @else {
-        <div class="orders-grid">
+        <div class="orders-grid" aria-live="polite">
           @for (order of orders(); track order.id) {
-            <div class="order-card" [class.order-card--active]="isActive(order.status)">
+            <article class="order-card" [class.order-card--active]="isActive(order.status)" [attr.aria-label]="'Pedido ' + order.id + ', estado ' + statusLabel(order.status)">
               <div class="order-card__header">
                 <div class="order-info">
                   <span class="order-id">Pedido #{{ order.id }}</span>
@@ -76,14 +76,16 @@ const STATUS_INDEX: Record<string, number> = {
 
               <!-- TRACKING STEPPER (Only for active orders) -->
               @if (isActive(order.status)) {
-                <div class="stepper">
+                <div class="stepper" role="list" [attr.aria-label]="'Progreso del pedido ' + order.id">
                   @for (step of steps; track step.key; let i = $index) {
-                    <div class="step" 
+                    <div class="step"
+                      role="listitem"
+                      [attr.aria-current]="stepIndex(order.status) === i ? 'step' : null"
                       [class.step--done]="stepIndex(order.status) > i" 
                       [class.step--active]="stepIndex(order.status) === i">
                       <div class="step__dot">
                         @if (stepIndex(order.status) > i) {
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>
+                          <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>
                         } @else {
                           <span class="step__icon">{{ step.icon }}</span>
                         }
@@ -128,13 +130,13 @@ const STATUS_INDEX: Record<string, number> = {
 
               <!-- ITEMS SECTION -->
               <div class="items-section">
-                <button class="items-toggle" (click)="toggleItems(order.id)">
+                <button type="button" class="items-toggle" (click)="toggleItems(order.id)" [attr.aria-expanded]="expandedOrders().includes(order.id)" [attr.aria-controls]="'order-items-' + order.id">
                   {{ expandedOrders().includes(order.id) ? 'Ocultar productos' : 'Ver productos' }}
                   <span class="chevron" [class.expanded]="expandedOrders().includes(order.id)">▾</span>
                 </button>
 
                 @if (expandedOrders().includes(order.id)) {
-                  <div class="items-list anim-slide-down">
+                  <div class="items-list anim-slide-down" [id]="'order-items-' + order.id">
                     @if (!itemsMap()[order.id]) {
                       <div class="items-loader"><span class="loader loader--sm"></span></div>
                     } @else {
@@ -156,13 +158,13 @@ const STATUS_INDEX: Record<string, number> = {
                   <strong>\${{ order.total }}</strong>
                 </div>
                 @if (canCancel(order.status)) {
-                  <button class="cancel-btn" (click)="cancelOrder(order.id)" [disabled]="cancellingOrderId() === order.id">
+                  <button type="button" class="cancel-btn" (click)="cancelOrder(order.id)" [disabled]="cancellingOrderId() === order.id" [attr.aria-label]="'Cancelar pedido ' + order.id">
                     @if (cancellingOrderId() === order.id) { <span class="loader loader--sm"></span> }
                     @else { Cancelar Pedido }
                   </button>
                 }
               </div>
-            </div>
+            </article>
           }
         </div>
       }

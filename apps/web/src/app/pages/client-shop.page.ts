@@ -36,7 +36,7 @@ const GRADIENTS = [
                   <a routerLink="/auth/login" class="secondary-btn">Iniciar sesión</a>
                 </div>
               </div>
-              <div class="hero-visual">
+              <div class="hero-visual" aria-hidden="true">
                 <div class="floating-badge">🍔 +100 Negocios</div>
                 <div class="floating-badge second">🚀 Entrega Flash</div>
               </div>
@@ -48,14 +48,14 @@ const GRADIENTS = [
               <p>Descubre los mejores sabores cerca de ti</p>
             </div>
             <div class="filter-actions">
-              <div class="quick-filters">
+              <div class="quick-filters" role="group" aria-label="Filtros rapidos de comida">
                 @for (cat of ['Pizza', 'Burgers', 'Sushi', 'Tacos', 'Postres']; track cat) {
-                  <button (click)="searchService.setQuery(cat)" [class.active]="searchService.query() === cat">{{ cat }}</button>
+                  <button type="button" (click)="searchService.setQuery(cat)" [class.active]="searchService.query() === cat" [attr.aria-pressed]="searchService.query() === cat">{{ cat }}</button>
                 }
               </div>
               @if (searchService.query()) {
-                <button class="reset-btn" (click)="searchService.setQuery('')">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                <button type="button" class="reset-btn" (click)="searchService.setQuery('')" aria-label="Limpiar filtro de busqueda">
+                  <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
                   Limpiar
                 </button>
               }
@@ -69,7 +69,7 @@ const GRADIENTS = [
           } @else {
             <div class="restaurant-grid">
               @for (r of filteredRestaurants; track r.id) {
-                <button class="r-card" (click)="selectRestaurant(r)">
+                <button type="button" class="r-card" (click)="selectRestaurant(r)" [attr.aria-label]="'Seleccionar restaurante ' + r.name + '. Estado: ' + (r.is_open ? 'abierto' : 'cerrado')">
                   <div class="r-card__image" [style.background]="bannerGradient(r.id)">
                     <span>{{ r.name.charAt(0) }}</span>
                     <span class="status-chip" [class.open]="r.is_open">{{ r.is_open ? 'Abierto' : 'Cerrado' }}</span>
@@ -94,8 +94,8 @@ const GRADIENTS = [
         <div class="menu-view anim-fade-in">
           <div class="menu-main">
             <header class="menu-hero" [style.background]="bannerGradient(selectedRestaurant.id)">
-              <button class="back-btn" (click)="goToBrowse()">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m15 18-6-6 6-6"/></svg>
+              <button type="button" class="back-btn" (click)="goToBrowse()" aria-label="Volver a la lista de restaurantes">
+                <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m15 18-6-6 6-6"/></svg>
                 Volver
               </button>
               <div class="hero-content">
@@ -104,9 +104,9 @@ const GRADIENTS = [
               </div>
             </header>
 
-            <nav class="category-nav">
+            <nav class="category-nav" aria-label="Categorias del menu">
               @for (cat of categories; track cat) {
-                <button [class.active]="activeCategory === cat" (click)="activeCategory = cat">{{ cat }}</button>
+                <button type="button" [class.active]="activeCategory === cat" [attr.aria-pressed]="activeCategory === cat" (click)="activeCategory = cat">{{ cat }}</button>
               }
             </nav>
 
@@ -117,8 +117,8 @@ const GRADIENTS = [
                     <h3>{{ p.name }}</h3>
                     <p>{{ p.description }}</p>
                     <span class="price">\${{ asPrice(p.price) }}</span>
-                    <button class="add-btn" (click)="addToCart(p)">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 5v14M5 12h14"/></svg>
+                    <button type="button" class="add-btn" (click)="addToCart(p)" [attr.aria-label]="'Agregar ' + p.name + ' al carrito'">
+                      <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 5v14M5 12h14"/></svg>
                       Agregar
                     </button>
                   </div>
@@ -132,13 +132,13 @@ const GRADIENTS = [
             </div>
           </div>
 
-          <aside class="cart-sidebar" [class.cart-sidebar--open]="isMobileCartOpen()">
-            <div class="cart-sidebar__sticky">
-              <header class="cart-header" (click)="toggleMobileCart()">
+          <aside class="cart-sidebar" [class.cart-sidebar--open]="isMobileCartOpen()" aria-label="Carrito de compra">
+            <div id="cart-panel" class="cart-sidebar__sticky">
+              <button type="button" class="cart-header" (click)="toggleMobileCart()" [attr.aria-expanded]="isMobileCartOpen()" aria-controls="cart-panel">
                 <h3>Tu Pedido</h3>
                 <span class="item-count">{{ cartItemsCount() }} items</span>
-                <svg class="mobile-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m18 15-6-6-6 6"/></svg>
-              </header>
+                <svg class="mobile-chevron" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m18 15-6-6-6 6"/></svg>
+              </button>
 
               @if (!cart().length) {
                 <div class="cart-empty">
@@ -151,15 +151,15 @@ const GRADIENTS = [
                   @for (item of cart(); track item.productId) {
                     <div class="cart-item">
                       <div class="cart-item__qty">
-                        <button (click)="changeQty(item.productId, -1)">-</button>
-                        <span>{{ item.quantity }}</span>
-                        <button (click)="changeQty(item.productId, 1)">+</button>
+                        <button type="button" (click)="changeQty(item.productId, -1)" [attr.aria-label]="'Disminuir cantidad de ' + item.name">-</button>
+                        <span [attr.aria-label]="'Cantidad: ' + item.quantity">{{ item.quantity }}</span>
+                        <button type="button" (click)="changeQty(item.productId, 1)" [attr.aria-label]="'Aumentar cantidad de ' + item.name">+</button>
                       </div>
                       <div class="cart-item__info">
                         <strong>{{ item.name }}</strong>
                         <span>\${{ (item.price * item.quantity).toFixed(2) }}</span>
                       </div>
-                      <button class="cart-item__remove" (click)="removeFromCart(item.productId)">×</button>
+                      <button type="button" class="cart-item__remove" (click)="removeFromCart(item.productId)" [attr.aria-label]="'Eliminar ' + item.name + ' del carrito'">×</button>
                     </div>
                   }
                 </div>
@@ -169,9 +169,9 @@ const GRADIENTS = [
                     <span>Subtotal</span>
                     <strong>\${{ cartSubtotal().toFixed(2) }}</strong>
                   </div>
-                  <button class="pay-btn" (click)="goToCheckout()">
+                  <button type="button" class="pay-btn" (click)="goToCheckout()" [attr.aria-label]="'Ir a pagar. Subtotal ' + cartSubtotal().toFixed(2)">
                     Ir a pagar
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14m-7-7 7 7-7 7"/></svg>
+                    <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14m-7-7 7 7-7 7"/></svg>
                   </button>
                 </footer>
               }
@@ -255,7 +255,7 @@ const GRADIENTS = [
     /* ── CART SIDEBAR ── */
     .cart-sidebar { position: sticky; top: 100px; }
     .cart-sidebar__sticky { background: var(--panel); border: 1.5px solid var(--line); border-radius: 24px; padding: 2rem; display: flex; flex-direction: column; min-height: 400px; box-shadow: var(--shadow-sm); }
-    .cart-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1.5px solid var(--line); }
+    .cart-header { width: 100%; display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2rem; padding: 0 0 1rem; border: 0; border-bottom: 1.5px solid var(--line); background: transparent; color: inherit; text-align: left; font: inherit; }
     .cart-header h3 { margin: 0; font-size: 1.3rem; font-weight: 900; }
     .item-count { font-weight: 700; color: var(--muted); font-size: 0.85rem; }
 

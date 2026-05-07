@@ -14,7 +14,7 @@ import type { DeliveryAvailable, OrderSummary } from '../core/models';
     <div class="page anim-fade-in">
       <!-- HEADER -->
       <header class="page-header">
-        <div class="page-header__icon">
+        <div class="page-header__icon" aria-hidden="true">
           @if (isHistory()) { 📜 } @else { 🛵 }
         </div>
         <div class="page-header__text">
@@ -37,23 +37,23 @@ import type { DeliveryAvailable, OrderSummary } from '../core/models';
       }
 
       @if (errorMessage) {
-        <div class="alert alert--error anim-shake">
+        <div class="alert alert--error anim-shake" role="alert">
           <span>{{ errorMessage }}</span>
         </div>
       }
 
       @if (message) {
-        <div class="alert alert--success anim-slide-up">
+        <div class="alert alert--success anim-slide-up" role="status" aria-live="polite">
           <span>{{ message }}</span>
         </div>
       }
 
       @if (!isHistory()) {
         <!-- GPS SECTION -->
-        <section class="gps-card" [class.gps-card--tracking]="trackingOrderId">
+        <section class="gps-card" [class.gps-card--tracking]="trackingOrderId" aria-live="polite" aria-label="Estado de transmision GPS">
           <div class="gps-card__left">
             <div class="gps-icon" [class.tracking]="trackingOrderId">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                 <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
               </svg>
             </div>
@@ -62,7 +62,7 @@ import type { DeliveryAvailable, OrderSummary } from '../core/models';
               <p>{{ trackingOrderId ? 'Transmitiendo GPS en tiempo real' : 'El GPS se activa al iniciar una entrega' }}</p>
             </div>
           </div>
-          <div class="gps-status-pill" [class.active]="trackingOrderId">
+          <div class="gps-status-pill" [class.active]="trackingOrderId" role="status">
             <span class="gps-status-dot"></span>
             {{ trackingOrderId ? 'EN VIVO' : 'INACTIVO' }}
           </div>
@@ -72,7 +72,7 @@ import type { DeliveryAvailable, OrderSummary } from '../core/models';
         <article class="card">
           <div class="card-header">
             <h3>Pedidos disponibles</h3>
-            <button class="btn btn--ghost btn--sm" (click)="loadAvailable()" [disabled]="loadingAvailable">
+            <button type="button" class="btn btn--ghost btn--sm" (click)="loadAvailable()" [disabled]="loadingAvailable" aria-label="Recargar pedidos disponibles">
               @if (loadingAvailable) { <span class="spinner"></span> } @else { ↻ }
             </button>
           </div>
@@ -85,7 +85,7 @@ import type { DeliveryAvailable, OrderSummary } from '../core/models';
               <p>No hay pedidos cercanos en este momento.</p>
             </div>
           } @else {
-            <ul class="delivery-list">
+            <ul class="delivery-list" aria-label="Pedidos disponibles para aceptar">
               @for (item of available(); track item.id) {
                 <li class="delivery-card anim-slide-up">
                   <div class="delivery-card__header">
@@ -95,7 +95,7 @@ import type { DeliveryAvailable, OrderSummary } from '../core/models';
                   <div class="delivery-card__address">
                     📍 {{ item.delivery_address }}
                   </div>
-                  <button class="btn btn--primary btn--full" (click)="acceptDelivery(item.id)" [disabled]="takingOrderId === item.id">
+                  <button type="button" class="btn btn--primary btn--full" (click)="acceptDelivery(item.id)" [disabled]="takingOrderId === item.id" [attr.aria-label]="'Aceptar entrega del pedido ' + item.id">
                     @if (takingOrderId === item.id) { <span class="spinner spinner--white"></span> } @else { Aceptar Entrega }
                   </button>
                 </li>
@@ -114,7 +114,7 @@ import type { DeliveryAvailable, OrderSummary } from '../core/models';
               <span class="count-badge">{{ filteredOrders().length }}</span>
             }
           </div>
-          <button type="button" class="btn btn--ghost btn--sm" (click)="loadMyOrders()" [disabled]="loadingMyOrders">
+          <button type="button" class="btn btn--ghost btn--sm" (click)="loadMyOrders()" [disabled]="loadingMyOrders" aria-label="Recargar mis entregas">
             @if (loadingMyOrders) { <span class="spinner"></span> } @else { ↻ }
           </button>
         </div>
@@ -127,7 +127,7 @@ import type { DeliveryAvailable, OrderSummary } from '../core/models';
             <p>{{ isHistory() ? 'Aún no tienes entregas en tu historial.' : 'No tienes entregas activas.' }}</p>
           </div>
         } @else {
-          <ul class="order-list">
+          <ul class="order-list" aria-label="Mis entregas">
             @for (order of filteredOrders(); track order.id) {
               <li class="order-item" [class.order-item--active]="trackingOrderId === order.id">
                 <div class="order-item__header">
@@ -168,22 +168,22 @@ import type { DeliveryAvailable, OrderSummary } from '../core/models';
 
                 @if (!isHistory() && canDeliver(order.status)) {
                   <div class="delivery-proof-zone anim-slide-down">
-                    <input type="file" #fileInput hidden (change)="onFileSelected($event, order.id)" accept="image/*">
-                    <div class="proof-box" (click)="fileInput.click()">
-                      <div class="proof-icon">📸</div>
+                    <input type="file" #fileInput hidden (change)="onFileSelected($event, order.id)" accept="image/*" [attr.aria-label]="'Evidencia de entrega del pedido ' + order.id">
+                    <button type="button" class="proof-box" (click)="fileInput.click()">
+                      <div class="proof-icon" aria-hidden="true">📸</div>
                       <span>Subir Evidencia de Entrega</span>
                       <p>Toma una foto al entregar el pedido</p>
-                    </div>
+                    </button>
                   </div>
                 }
                 <div class="order-item__tray">
-                  <button class="tray-toggle" (click)="toggleItems(order.id)">
+                  <button type="button" class="tray-toggle" (click)="toggleItems(order.id)" [attr.aria-expanded]="expandedOrderId() === order.id" [attr.aria-controls]="'driver-order-items-' + order.id">
                     {{ expandedOrderId() === order.id ? 'Ocultar detalles' : 'Ver productos' }}
                     <span class="chevron" [class.expanded]="expandedOrderId() === order.id">▼</span>
                   </button>
 
                   @if (expandedOrderId() === order.id) {
-                    <div class="tray-content anim-fade-in">
+                    <div class="tray-content anim-fade-in" [id]="'driver-order-items-' + order.id">
                       @if (!itemsMap()[order.id]) {
                         <div class="tray-loader">Cargando...</div>
                       } @else {
@@ -201,12 +201,12 @@ import type { DeliveryAvailable, OrderSummary } from '../core/models';
                 <div class="order-item__actions">
                   @if (!isHistory()) {
                     @if (canStartTransit(order.status)) {
-                      <button class="btn btn--primary btn--full" (click)="updateDeliveryStatus(order.id, 'IN_TRANSIT')" [disabled]="updatingOrderId === order.id || !gpsSupported">
+                      <button type="button" class="btn btn--primary btn--full" (click)="updateDeliveryStatus(order.id, 'IN_TRANSIT')" [disabled]="updatingOrderId === order.id || !gpsSupported" [attr.aria-label]="'Iniciar ruta y GPS para pedido ' + order.id">
                         @if (updatingOrderId === order.id) { <span class="spinner spinner--white"></span> } @else { 🛵 Iniciar Ruta y GPS }
                       </button>
                     }
                     @if (canDeliver(order.status)) {
-                      <button class="btn btn--success btn--full" (click)="updateDeliveryStatus(order.id, 'DELIVERED')" [disabled]="updatingOrderId === order.id">
+                      <button type="button" class="btn btn--success btn--full" (click)="updateDeliveryStatus(order.id, 'DELIVERED')" [disabled]="updatingOrderId === order.id" [attr.aria-label]="'Confirmar entrega del pedido ' + order.id">
                         @if (updatingOrderId === order.id) { <span class="spinner spinner--white"></span> } @else { ✅ Confirmar Entrega }
                       </button>
                     }
@@ -276,6 +276,7 @@ import type { DeliveryAvailable, OrderSummary } from '../core/models';
     .detail-text span { font-size: 0.85rem; color: var(--muted); }
 
     .delivery-proof-zone { padding: 1.5rem; border: 2px dashed var(--line); border-radius: 20px; background: var(--bg-app); cursor: pointer; text-align: center; }
+    .proof-box { width: 100%; border: 0; background: transparent; color: inherit; font: inherit; text-align: center; display: grid; justify-items: center; gap: 0.25rem; }
     .proof-icon { font-size: 2rem; opacity: 0.4; }
     .proof-box span { font-weight: 800; }
     .proof-box p { margin: 0; font-size: 0.8rem; color: var(--muted); }

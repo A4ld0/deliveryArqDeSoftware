@@ -3,7 +3,7 @@
     <header class="topbar" [class.topbar--minimal]="profile()?.role !== 'client'">
       <div class="topbar__main">
         <div class="brand-group">
-          <a [routerLink]="moduleRoute(profile()?.role ?? 'client')" class="brand">
+          <a [routerLink]="moduleRoute(profile()?.role ?? 'client')" class="brand" aria-label="Ir al inicio de E4">
             <div class="brand__badge">E4</div>
             <div class="brand__text">
               <h1>E4</h1>
@@ -12,27 +12,28 @@
         </div>
 
         @if (profile()?.role === 'client') {
-          <nav class="top-nav">
+          <nav class="top-nav" aria-label="Navegación principal del cliente">
             <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+              <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
               Explorar
             </a>
             <a routerLink="/orders" routerLinkActive="active">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+              <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
               Mis Pedidos
             </a>
             <a routerLink="/incidents" routerLinkActive="active">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
               Soporte
             </a>
           </nav>
 
           <div class="search-container">
             <div class="search-bar">
-              <svg class="search-icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+              <svg class="search-icon" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
               <input 
                 type="text" 
                 placeholder="Busca restaurantes o platillos..."
+                aria-label="Buscar restaurantes o platillos"
                 [value]="searchService.query()"
                 (input)="searchService.setQuery($any($event.target).value)"
               >
@@ -48,7 +49,7 @@
               </div>
               
               <div class="user-actions">
-                <a routerLink="/profile" class="avatar-btn" title="Editar Mi Perfil">
+                <a routerLink="/profile" class="avatar-btn" title="Editar Mi Perfil" aria-label="Editar mi perfil">
                   @if (profile()?.fullName) {
                     <span>{{ profile()!.fullName.charAt(0) }}</span>
                   } @else {
@@ -56,8 +57,8 @@
                   }
                 </a>
                 
-                <button class="logout-action" (click)="logout()" title="Cerrar sesión">
-                  <svg viewBox="0 0 24 24">
+                <button class="logout-action" (click)="logout()" title="Cerrar sesión" aria-label="Cerrar sesión">
+                  <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">
                     <path d="M16 17v-3H9v-4h7V7l5 5-5 5M14 2a2 2 0 0 1 2 2v2h-2V4H5v16h9v-2h2v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9z"/>
                   </svg>
                 </button>

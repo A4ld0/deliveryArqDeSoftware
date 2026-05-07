@@ -48,28 +48,38 @@ import { SessionService } from '../core/session.service';
             </header>
 
             <!-- Píldoras de Navegación -->
-            <nav class="auth-tabs">
+            <nav class="auth-tabs" role="tablist" aria-label="Acceso a la plataforma">
               <button 
-                type="button" 
+                type="button"
+                role="tab"
+                id="login-tab"
+                aria-controls="auth-login-panel"
+                [attr.aria-selected]="mode() === 'login'"
                 [class.active]="mode() === 'login'" 
                 (click)="setMode('login')">
                 Ingresar
               </button>
               <button 
-                type="button" 
+                type="button"
+                role="tab"
+                id="signup-tab"
+                aria-controls="auth-login-panel"
+                [attr.aria-selected]="mode() === 'signup'"
                 [class.active]="mode() === 'signup'" 
                 (click)="setMode('signup')">
                 Registrarse
               </button>
             </nav>
 
-            <form class="auth-form" (submit)="onSubmitAuth($event)">
+            <form id="auth-login-panel" class="auth-form" role="tabpanel" [attr.aria-labelledby]="mode() === 'login' ? 'login-tab' : 'signup-tab'" (submit)="onSubmitAuth($event)">
               <div class="input-group">
-                <input type="email" id="email" [(ngModel)]="email" name="email" placeholder="Correo electrónico" required />
+                <label class="sr-only" for="email">Correo electrónico</label>
+                <input type="email" id="email" [(ngModel)]="email" name="email" placeholder="Correo electrónico" required autocomplete="email" />
               </div>
 
               <div class="input-group">
-                <input type="password" id="password" [(ngModel)]="password" name="password" placeholder="Contraseña" required minlength="6" />
+                <label class="sr-only" for="password">Contraseña</label>
+                <input type="password" id="password" [(ngModel)]="password" name="password" placeholder="Contraseña" required minlength="6" autocomplete="current-password" />
               </div>
 
               <button type="submit" class="btn-primary-auth" [disabled]="loadingAuth()">
@@ -84,36 +94,37 @@ import { SessionService } from '../core/session.service';
             <!-- Paso 2: Completar Perfil -->
             @if (needsProfileForm()) {
               <div class="profile-overlay">
-                <div class="profile-modal">
+                <div class="profile-modal" role="dialog" aria-modal="true" aria-labelledby="profile-dialog-title" aria-describedby="profile-dialog-description">
                   <header>
-                    <h4>¡Casi listo!</h4>
-                    <p>Cuéntanos un poco más sobre ti para terminar.</p>
+                    <h4 id="profile-dialog-title">Casi listo</h4>
+                    <p id="profile-dialog-description">Cuéntanos un poco más sobre ti para terminar.</p>
                   </header>
 
                   <form class="profile-form" (submit)="onSubmitProfile($event)">
                     <div class="input-group">
-                      <input type="text" [(ngModel)]="fullName" name="fullName" placeholder="Tu nombre y apellido" required />
+                      <label class="sr-only" for="fullName">Nombre completo</label>
+                      <input type="text" id="fullName" [(ngModel)]="fullName" name="fullName" placeholder="Tu nombre y apellido" required autocomplete="name" />
                     </div>
 
                     <div class="role-selector">
-                      <label>¿Cómo vas a usar la app?</label>
-                      <div class="role-options">
+                      <label id="role-selector-label">¿Cómo vas a usar la app?</label>
+                      <div class="role-options" role="group" aria-labelledby="role-selector-label">
                         <!-- Opciones amigables -->
-                        <button type="button" class="role-card" [class.active]="role === 'client'" (click)="role = 'client'">
+                        <button type="button" class="role-card" [class.active]="role === 'client'" [attr.aria-pressed]="role === 'client'" (click)="role = 'client'">
                           <span class="role-emoji">🍔</span>
                           <div class="role-meta">
                             <strong>Quiero pedir comida</strong>
                             <small>Cliente</small>
                           </div>
                         </button>
-                        <button type="button" class="role-card" [class.active]="role === 'restaurant'" (click)="role = 'restaurant'">
+                        <button type="button" class="role-card" [class.active]="role === 'restaurant'" [attr.aria-pressed]="role === 'restaurant'" (click)="role = 'restaurant'">
                           <span class="role-emoji">🏪</span>
                           <div class="role-meta">
                             <strong>Quiero vender</strong>
                             <small>Restaurante / Tienda</small>
                           </div>
                         </button>
-                        <button type="button" class="role-card" [class.active]="role === 'driver'" (click)="role = 'driver'">
+                        <button type="button" class="role-card" [class.active]="role === 'driver'" [attr.aria-pressed]="role === 'driver'" (click)="role = 'driver'">
                           <span class="role-emoji">🛵</span>
                           <div class="role-meta">
                             <strong>Quiero repartir</strong>
@@ -135,9 +146,9 @@ import { SessionService } from '../core/session.service';
       </article>
 
       <!-- Alertas -->
-      <div class="notifications">
-        @if (message()) { <div class="toast success">{{ message() }}</div> }
-        @if (errorMessage()) { <div class="toast error">{{ errorMessage() }}</div> }
+      <div class="notifications" aria-live="polite" aria-atomic="true">
+        @if (message()) { <div class="toast success" role="status">{{ message() }}</div> }
+        @if (errorMessage()) { <div class="toast error" role="alert">{{ errorMessage() }}</div> }
       </div>
     </section>
   `,
