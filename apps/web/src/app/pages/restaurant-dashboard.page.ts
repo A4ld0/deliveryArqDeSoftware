@@ -50,6 +50,7 @@ import type { OrderSummary, OwnedRestaurant, Product } from '../core/models';
             <div>
               <h1>Centro de Operaciones</h1>
               <p>Monitorea tu negocio y actividad en tiempo real.</p>
+              <span class="today-date">{{ todayLabel }}</span>
             </div>
             <div class="status-selector" [class.open]="restaurantForm.isOpen">
               <div class="status-indicator"></div>
@@ -66,6 +67,10 @@ import type { OrderSummary, OwnedRestaurant, Product } from '../core/models';
           <div class="stats-grid">
             <div class="stat-card">
               <span class="stat-label">Pedidos Hoy</span>
+              <span class="stat-value">{{ todayOrders.length }}</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Total Pedidos</span>
               <span class="stat-value">{{ orders.length }}</span>
             </div>
             <div class="stat-card">
@@ -106,7 +111,7 @@ import type { OrderSummary, OwnedRestaurant, Product } from '../core/models';
           <header class="section-header">
             <div>
               <h1>Gestión de Pedidos</h1>
-              <p>Atiende y actualiza el estado de tus pedidos entrantes.</p>
+              <p>Pedidos de hoy y historial de días anteriores.</p>
             </div>
             <button class="refresh-btn" (click)="loadOrders()" [disabled]="loadingOrders">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.85.83 6.72 2.25L21 8m0-5v5h-5"/></svg>
@@ -114,99 +119,122 @@ import type { OrderSummary, OwnedRestaurant, Product } from '../core/models';
             </button>
           </header>
 
-          @if (!orders.length) {
-            <div class="empty-view">
+          <!-- ── Pedidos de hoy ── -->
+          <div class="orders-section-label">
+            <span class="day-badge day-badge--today">📅 Hoy</span>
+            <span class="day-count">{{ todayOrders.length }} pedido{{ todayOrders.length !== 1 ? 's' : '' }}</span>
+          </div>
+
+          @if (!todayOrders.length) {
+            <div class="empty-view empty-view--sm">
               <div class="empty-icon">📬</div>
-              <h3>Sin pedidos nuevos</h3>
-              <p>Cuando recibas un pedido, aparecerá aquí para que lo prepares.</p>
+              <h3>Sin pedidos hoy</h3>
+              <p>Cuando llegue un pedido aparecerá aquí.</p>
             </div>
           } @else {
             <div class="orders-grid">
-              @for (order of orders; track order.id) {
-                <div class="order-card" [class.order-card--new]="order.status === 'PENDING'">
-                  <div class="order-card__body">
-                    <div class="order-main-info">
-                      <div class="order-badge">#{{ order.id }}</div>
-                      <div class="order-meta">
-                        <span class="order-time">{{ order.created_at | date:'shortTime' }}</span>
-                        <strong class="order-title">{{ order.customer_name || 'Cliente' }}</strong>
-                        <span class="order-address">📍 {{ order.delivery_address }}</span>
-                      </div>
-                    </div>
-                    
-                    <div class="order-status">
-                      <span [class]="'status-chip ' + statusClass(order.status)">
-                        {{ statusLabel(order.status) }}
-                      </span>
-                    </div>
-
-                    <div class="order-total-price">
-                      \${{ order.total }}
-                    </div>
-                  </div>
-
-                  <div class="order-details-tray">
-                    @if (!itemsMap[order.id]) {
-                      <div class="detail-loader">Cargando platillos...</div>
-                    } @else {
-                      @for (item of itemsMap[order.id]; track item.id) {
-                        <div class="detail-item">
-                          <span class="qty">{{ item.quantity }}x</span>
-                          <span class="name">{{ item.product_name }}</span>
-                        </div>
-                      }
-                    }
-                  </div>
-                  
-                  @if (hasDeliveryLocation(order)) {
-                    <div class="order-delivery-map">
-                      <div class="delivery-map-header">
-                        <span>🏠</span>
-                        <span>{{ order.delivery_address }}</span>
-                      </div>
-                      <app-order-map
-                        [restaurantLat]="order.restaurant_latitude"
-                        [restaurantLng]="order.restaurant_longitude"
-                        [deliveryLat]="order.delivery_latitude"
-                        [deliveryLng]="order.delivery_longitude"
-                        height="200px"
-                      ></app-order-map>
-                    </div>
-                  }
-
-                  @if (order.driver_name) {
-                    <div class="order-driver-info">
-                      <span class="driver-icon">🛵</span>
-                      <div class="driver-text">
-                        <small>Entregado por:</small>
-                        <strong>{{ order.driver_name }}</strong>
-                      </div>
-                    </div>
-                  }
-
-                  <div class="order-card__actions">
-                    @if (canAcceptOrder(order.status)) {
-                      <button class="action-btn action-btn--success" (click)="updateOrderStatus(order.id, 'ACCEPTED')">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-                        Aceptar
-                      </button>
-                    }
-                    @if (canMarkReady(order.status)) {
-                      <button class="action-btn action-btn--primary" (click)="updateOrderStatus(order.id, 'READY_FOR_PICKUP')">
-                        🍽️ Listo para Entrega
-                      </button>
-                    }
-                    @if (canRejectOrder(order.status)) {
-                      <button class="action-btn action-btn--ghost" (click)="startReject(order.id)">
-                        Rechazar
-                      </button>
-                    }
-                  </div>
-                </div>
+              @for (order of todayOrders; track order.id) {
+                <ng-container *ngTemplateOutlet="orderCard; context: { $implicit: order }"></ng-container>
               }
             </div>
           }
+
+          <!-- ── Pedidos anteriores ── -->
+          @if (historicOrders.length) {
+            <div class="orders-section-label orders-section-label--historic">
+              <span class="day-badge">🗂️ Días anteriores</span>
+              <span class="day-count">{{ historicOrders.length }} pedido{{ historicOrders.length !== 1 ? 's' : '' }} en total</span>
+            </div>
+
+            @for (group of historicOrdersByDay(); track group.date) {
+              <div class="day-group">
+                <div class="day-group__header">
+                  <span class="day-group__label">{{ group.label }}</span>
+                  <span class="day-group__date">{{ group.date | date:'dd/MM/yyyy' }}</span>
+                  <span class="day-group__count">{{ group.orders.length }} pedido{{ group.orders.length !== 1 ? 's' : '' }}</span>
+                </div>
+                <div class="orders-grid">
+                  @for (order of group.orders; track order.id) {
+                    <ng-container *ngTemplateOutlet="orderCard; context: { $implicit: order }"></ng-container>
+                  }
+                </div>
+              </div>
+            }
+          }
         </div>
+
+        <!-- ── Order card template ── -->
+        <ng-template #orderCard let-order>
+          <div class="order-card" [class.order-card--new]="order.status === 'PENDING'">
+            <div class="order-card__body">
+              <div class="order-main-info">
+                <div class="order-badge">#{{ order.id }}</div>
+                <div class="order-meta">
+                  <span class="order-time">{{ order.created_at | date:'dd/MM/yyyy HH:mm' }}</span>
+                  <strong class="order-title">{{ order.customer_name || 'Cliente' }}</strong>
+                  <span class="order-address">📍 {{ order.delivery_address }}</span>
+                </div>
+              </div>
+              <div class="order-status">
+                <span [class]="'status-chip ' + statusClass(order.status)">{{ statusLabel(order.status) }}</span>
+              </div>
+              <div class="order-total-price">\${{ order.total }}</div>
+            </div>
+
+            <div class="order-details-tray">
+              @if (!itemsMap[order.id]) {
+                <div class="detail-loader">Cargando platillos...</div>
+              } @else {
+                @for (item of itemsMap[order.id]; track item.id) {
+                  <div class="detail-item">
+                    <span class="qty">{{ item.quantity }}x</span>
+                    <span class="name">{{ item.product_name }}</span>
+                  </div>
+                }
+              }
+            </div>
+
+            @if (hasDeliveryLocation(order)) {
+              <div class="order-delivery-map">
+                <div class="delivery-map-header"><span>🏠</span><span>{{ order.delivery_address }}</span></div>
+                <app-order-map
+                  [restaurantLat]="order.restaurant_latitude"
+                  [restaurantLng]="order.restaurant_longitude"
+                  [deliveryLat]="order.delivery_latitude"
+                  [deliveryLng]="order.delivery_longitude"
+                  height="200px"
+                ></app-order-map>
+              </div>
+            }
+
+            @if (order.driver_name) {
+              <div class="order-driver-info">
+                <span class="driver-icon">🛵</span>
+                <div class="driver-text">
+                  <small>Entregado por:</small>
+                  <strong>{{ order.driver_name }}</strong>
+                </div>
+              </div>
+            }
+
+            <div class="order-card__actions">
+              @if (canAcceptOrder(order.status)) {
+                <button class="action-btn action-btn--success" (click)="updateOrderStatus(order.id, 'ACCEPTED')">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                  Aceptar
+                </button>
+              }
+              @if (canMarkReady(order.status)) {
+                <button class="action-btn action-btn--primary" (click)="updateOrderStatus(order.id, 'READY_FOR_PICKUP')">
+                  🍽️ Listo para Entrega
+                </button>
+              }
+              @if (canRejectOrder(order.status)) {
+                <button class="action-btn action-btn--ghost" (click)="startReject(order.id)">Rechazar</button>
+              }
+            </div>
+          </div>
+        </ng-template>
       }
 
       <!-- ══ SECTION: PRODUCTS (MENU) ══ -->
@@ -371,6 +399,7 @@ import type { OrderSummary, OwnedRestaurant, Product } from '../core/models';
     .section-header { display: flex; justify-content: space-between; align-items: flex-end; }
     .section-header h1 { margin: 0; font-size: 2.2rem; font-weight: 900; letter-spacing: -0.03em; }
     .section-header p { margin: 0.3rem 0 0; color: var(--muted); font-weight: 500; font-size: 1.1rem; }
+    .today-date { display: inline-block; margin-top: 0.5rem; font-size: 0.85rem; font-weight: 700; color: var(--primary); text-transform: capitalize; }
 
     /* Orders V2 */
     .orders-grid { display: grid; gap: 1.5rem; }
@@ -542,6 +571,33 @@ import type { OrderSummary, OwnedRestaurant, Product } from '../core/models';
     
     .btn--ghost { background: transparent; border: 1.5px solid var(--line); color: var(--muted); padding: 0.5rem 1rem; border-radius: 99px; font-weight: 700; cursor: pointer; font-size: 0.85rem; }
     .btn--sm { padding: 0.4rem 0.8rem; font-size: 0.8rem; }
+
+    /* Orders section labels */
+    .orders-section-label { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.2rem; margin-top: 0.5rem; }
+    .orders-section-label--historic { margin-top: 2.5rem; }
+    .day-badge { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.5rem 1.2rem; border-radius: 99px; font-weight: 800; font-size: 0.85rem; background: var(--bg-app); border: 1.5px solid var(--line); color: var(--ink); }
+    .day-badge--today { background: var(--primary-soft); border-color: var(--primary); color: var(--primary); }
+    .day-count { font-size: 0.8rem; font-weight: 700; color: var(--muted); }
+
+    /* Day group (historic) */
+    .day-group { margin-bottom: 2rem; }
+    .day-group__header { display: flex; align-items: center; gap: 1rem; padding: 0.8rem 1.2rem; background: var(--bg-app); border-radius: 16px; border: 1.5px solid var(--line); margin-bottom: 1rem; }
+    .day-group__label { font-weight: 800; font-size: 1rem; color: var(--ink); text-transform: capitalize; flex: 1; }
+    .day-group__date { font-size: 0.8rem; font-weight: 700; color: var(--muted); }
+    .day-group__count { font-size: 0.8rem; font-weight: 700; color: var(--muted); background: white; border: 1.5px solid var(--line); padding: 0.2rem 0.8rem; border-radius: 99px; }
+
+    /* Empty state small variant */
+    .empty-view--sm { padding: 2.5rem 2rem; }
+    .empty-view--sm .empty-icon { font-size: 2.5rem; margin-bottom: 0.8rem; }
+    .empty-view--sm h3 { font-size: 1.1rem; font-weight: 800; margin: 0 0 0.4rem; }
+    .empty-view--sm p { font-size: 0.9rem; color: var(--muted); margin: 0; }
+
+    /* Refresh button */
+    .refresh-btn { display: flex; align-items: center; gap: 0.6rem; padding: 0.8rem 1.5rem; border-radius: 99px; border: 1.5px solid var(--line); background: white; font-weight: 800; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; color: var(--ink); }
+    .refresh-btn svg { width: 16px; height: 16px; transition: transform 0.4s; }
+    .refresh-btn:hover { border-color: var(--ink); background: var(--bg-app); }
+    .refresh-btn:hover svg { transform: rotate(180deg); }
+    .refresh-btn:disabled { opacity: 0.5; cursor: not-allowed; }
   `
 })
 export class RestaurantDashboardPageComponent implements OnInit {
@@ -570,6 +626,10 @@ export class RestaurantDashboardPageComponent implements OnInit {
 
   protected message = '';
   protected errorMessage = '';
+
+  protected readonly todayLabel = new Date().toLocaleDateString('es-MX', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+  });
 
   protected restaurantForm = {
     name: '',
@@ -604,6 +664,49 @@ export class RestaurantDashboardPageComponent implements OnInit {
   protected totalEarnings(): string {
     const sum = this.orders.reduce((acc, o) => acc + Number(o.total), 0);
     return sum.toFixed(2);
+  }
+
+  private isToday(dateStr: string): boolean {
+    const d = new Date(dateStr);
+    const now = new Date();
+    return d.getFullYear() === now.getFullYear() &&
+           d.getMonth()    === now.getMonth()    &&
+           d.getDate()     === now.getDate();
+  }
+
+  protected get todayOrders() {
+    return this.orders.filter(o => this.isToday(o.created_at));
+  }
+
+  protected get historicOrders() {
+    return this.orders.filter(o => !this.isToday(o.created_at));
+  }
+
+  protected historicOrdersByDay(): { label: string; date: string; orders: OrderSummary[] }[] {
+    const map = new Map<string, OrderSummary[]>();
+    for (const o of this.historicOrders) {
+      const key = o.created_at.slice(0, 10); // YYYY-MM-DD
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(o);
+    }
+    return Array.from(map.entries())
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .map(([date, orders]) => ({
+        date,
+        label: this.formatDayLabel(date),
+        orders
+      }));
+  }
+
+  private formatDayLabel(dateStr: string): string {
+    const d = new Date(dateStr + 'T12:00:00');
+    const now = new Date();
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+
+    if (d.toDateString() === yesterday.toDateString()) return 'Ayer';
+
+    return d.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' });
   }
 
   protected asPrice(value: number | string): string {
