@@ -291,7 +291,7 @@ export class ClientOrdersPageComponent implements OnDestroy {
   private eventSource: EventSource | null = null;
 
   constructor() {
-    void this.loadOrders();
+    void this.boot();
   }
 
   async toggleItems(orderId: number) {

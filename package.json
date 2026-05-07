@@ -9,6 +9,8 @@
     "dev:api": "npm run dev --workspace apps/api",
     "build:api": "npm run build --workspace apps/api",
     "test:api": "npm run test --workspace apps/api",
+    "test:web": "npm run test --workspace apps/web -- --watch=false --browsers=ChromeHeadless",
+    "test:all": "npm run test:api && npm run test:web",
     "lint:api": "npm run lint --workspace apps/api",
     "dev:web": "npm run start --workspace apps/web",
     "build:web": "npm run build --workspace apps/web"
@@ -17,4 +19,3 @@
     "node": ">=20"
   }
 }
-
