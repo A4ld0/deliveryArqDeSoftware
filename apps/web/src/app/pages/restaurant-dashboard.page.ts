@@ -12,6 +12,12 @@ import type { OrderSummary, OwnedRestaurant, Product } from '../core/models';
   imports: [CommonModule, FormsModule],
   template: `
     <div class="dashboard-viewport anim-fade-in">
+      @if (message) {
+        <div class="feedback-alert feedback-alert--success" role="status" aria-live="polite">{{ message }}</div>
+      }
+      @if (errorMessage) {
+        <div class="feedback-alert feedback-alert--error" role="alert">{{ errorMessage }}</div>
+      }
       
       <!-- ══ SECTION: DASHBOARD (OVERVIEW) ══ -->
       @if (currentSection() === 'dashboard') {
@@ -27,7 +33,7 @@ import type { OrderSummary, OwnedRestaurant, Product } from '../core/models';
                 <strong>{{ restaurantForm.isOpen ? 'Negocio Abierto' : 'Negocio Cerrado' }}</strong>
                 <span>{{ restaurantForm.isOpen ? 'Recibiendo pedidos' : 'Fuera de servicio' }}</span>
               </div>
-              <button class="toggle-btn" (click)="toggleOpen()">
+              <button type="button" class="toggle-btn" [attr.aria-pressed]="restaurantForm.isOpen" (click)="toggleOpen()">
                 {{ restaurantForm.isOpen ? 'Pausar Servicio' : 'Activar Servicio' }}
               </button>
             </div>
@@ -78,7 +84,7 @@ import type { OrderSummary, OwnedRestaurant, Product } from '../core/models';
               <h1>Gestión de Pedidos</h1>
               <p>Atiende y actualiza el estado de tus pedidos entrantes.</p>
             </div>
-            <button class="refresh-btn" (click)="loadOrders()" [disabled]="loadingOrders">
+            <button type="button" class="refresh-btn" (click)="loadOrders()" [disabled]="loadingOrders" [attr.aria-busy]="loadingOrders">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.85.83 6.72 2.25L21 8m0-5v5h-5"/></svg>
               {{ loadingOrders ? 'Actualizando...' : 'Recargar' }}
             </button>
@@ -140,18 +146,18 @@ import type { OrderSummary, OwnedRestaurant, Product } from '../core/models';
 
                   <div class="order-card__actions">
                     @if (canAcceptOrder(order.status)) {
-                      <button class="action-btn action-btn--success" (click)="updateOrderStatus(order.id, 'ACCEPTED')">
+                      <button type="button" class="action-btn action-btn--success" (click)="updateOrderStatus(order.id, 'ACCEPTED')" [attr.aria-label]="'Aceptar pedido ' + order.id">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
                         Aceptar
                       </button>
                     }
                     @if (canMarkReady(order.status)) {
-                      <button class="action-btn action-btn--primary" (click)="updateOrderStatus(order.id, 'READY_FOR_PICKUP')">
+                      <button type="button" class="action-btn action-btn--primary" (click)="updateOrderStatus(order.id, 'READY_FOR_PICKUP')" [attr.aria-label]="'Marcar pedido ' + order.id + ' como listo para entrega'">
                         🍽️ Listo para Entrega
                       </button>
                     }
                     @if (canRejectOrder(order.status)) {
-                      <button class="action-btn action-btn--ghost" (click)="startReject(order.id)">
+                      <button type="button" class="action-btn action-btn--ghost" (click)="startReject(order.id)" [attr.aria-label]="'Rechazar pedido ' + order.id">
                         Rechazar
                       </button>
                     }
@@ -171,23 +177,23 @@ import type { OrderSummary, OwnedRestaurant, Product } from '../core/models';
               <h1>Menú de Platillos</h1>
               <p>Agrega, edita o pausa la visibilidad de tus platillos.</p>
             </div>
-            <button class="add-btn" (click)="showAddProduct = !showAddProduct">
+            <button type="button" class="add-btn" [attr.aria-expanded]="showAddProduct" aria-controls="product-form-panel" (click)="showAddProduct = !showAddProduct">
               {{ showAddProduct ? 'Cerrar' : '+ Nuevo Platillo' }}
             </button>
           </header>
           @if (showAddProduct) {
-            <div class="product-form-card anim-slide-down">
+            <div id="product-form-panel" class="product-form-card anim-slide-down">
               <div class="form-title">
                 <h3>{{ editingProductId ? 'Editar Platillo' : 'Nuevo Platillo' }}</h3>
                 @if (editingProductId) {
-                  <button class="btn--ghost btn--sm" (click)="cancelEdit()">Cancelar</button>
+                  <button type="button" class="btn--ghost btn--sm" (click)="cancelEdit()">Cancelar</button>
                 }
               </div>
               <div class="form-split">
                 <div class="image-dropzone">
                   <div class="dropzone-content">
                     @if (productForm.imageUrl) {
-                      <img [src]="productForm.imageUrl" class="preview-img" />
+                      <img [src]="productForm.imageUrl" [alt]="productForm.name ? 'Vista previa de ' + productForm.name : 'Vista previa del producto'" class="preview-img" />
                     } @else {
                       <div class="drop-icon">📸</div>
                       <span>Subir Foto del Platillo</span>
@@ -199,23 +205,23 @@ import type { OrderSummary, OwnedRestaurant, Product } from '../core/models';
                 <form (submit)="saveProduct($event)" class="grid-form">
                   <div class="form-row">
                     <div class="form-group">
-                      <label>Nombre del Platillo</label>
-                      <input type="text" [(ngModel)]="productForm.name" name="name" placeholder="Ej. Hamburguesa Doble" required />
+                      <label for="restaurant-product-name">Nombre del Platillo</label>
+                      <input id="restaurant-product-name" type="text" [(ngModel)]="productForm.name" name="name" placeholder="Ej. Hamburguesa Doble" required />
                     </div>
                     <div class="form-group">
-                      <label>Precio</label>
-                      <input type="number" [(ngModel)]="productForm.price" name="price" placeholder="0.00" required />
+                      <label for="restaurant-product-price">Precio</label>
+                      <input id="restaurant-product-price" type="number" [(ngModel)]="productForm.price" name="price" placeholder="0.00" required />
                     </div>
                   </div>
                   <div class="form-group">
                     <label>Categoría</label>
-                    <input type="text" [(ngModel)]="productForm.category" name="category" placeholder="Ej. Entradas, Postres..." />
+                    <input id="restaurant-product-category" type="text" [(ngModel)]="productForm.category" name="category" placeholder="Ej. Entradas, Postres..." aria-label="Categoria del platillo" />
                   </div>
                   <div class="form-group">
                     <label>Descripción</label>
                     <textarea [(ngModel)]="productForm.description" name="description" placeholder="Ingredientes, porción..."></textarea>
                   </div>
-                  <button type="submit" class="submit-btn" [disabled]="savingProduct">
+                  <button type="submit" class="submit-btn" [disabled]="savingProduct" [attr.aria-busy]="savingProduct">
                     {{ savingProduct ? 'Guardando...' : (editingProductId ? 'Actualizar Platillo' : 'Publicar Platillo') }}
                   </button>
                 </form>
@@ -227,7 +233,7 @@ import type { OrderSummary, OwnedRestaurant, Product } from '../core/models';
             @for (p of products; track p.id) {
               <div class="admin-product-card" [class.editing]="editingProductId === p.id">
                 <div class="p-img">
-                  @if (p.image_url) { <img [src]="p.image_url" /> }
+                  @if (p.image_url) { <img [src]="p.image_url" [alt]="p.name" /> }
                   @else { <span>🍔</span> }
                 </div>
                 <div class="p-details">
@@ -264,21 +270,21 @@ import type { OrderSummary, OwnedRestaurant, Product } from '../core/models';
             <form (submit)="saveRestaurant($event)" class="settings-form">
               <div class="form-group">
                 <label>Nombre Comercial</label>
-                <input type="text" [(ngModel)]="restaurantForm.name" name="rName" required />
+                <input id="restaurant-name" type="text" [(ngModel)]="restaurantForm.name" name="rName" required aria-label="Nombre comercial" />
               </div>
               <div class="form-row">
                 <div class="form-group">
                   <label>Teléfono</label>
-                  <input type="text" [(ngModel)]="restaurantForm.phone" name="rPhone" />
+                  <input id="restaurant-phone" type="text" [(ngModel)]="restaurantForm.phone" name="rPhone" aria-label="Telefono del restaurante" />
                 </div>
                 <div class="form-group">
                   <label>Dirección Física</label>
-                  <input type="text" [(ngModel)]="restaurantForm.address" name="rAddress" required />
+                  <input id="restaurant-address" type="text" [(ngModel)]="restaurantForm.address" name="rAddress" required aria-label="Direccion fisica del restaurante" />
                 </div>
               </div>
               <div class="form-group">
                 <label>Descripción del Negocio</label>
-                <textarea [(ngModel)]="restaurantForm.description" name="rDesc"></textarea>
+                <textarea id="restaurant-description" [(ngModel)]="restaurantForm.description" name="rDesc" aria-label="Descripcion del negocio"></textarea>
               </div>
               <button type="submit" class="save-btn" [disabled]="savingRestaurant">Actualizar Información</button>
             </form>
@@ -290,6 +296,9 @@ import type { OrderSummary, OwnedRestaurant, Product } from '../core/models';
   `,
   styles: `
     .dashboard-viewport { max-width: 1200px; margin: 0 auto; }
+    .feedback-alert { margin-bottom: 1.5rem; padding: 1rem 1.25rem; border-radius: 18px; font-weight: 700; }
+    .feedback-alert--success { background: #f0fdf4; border: 1.5px solid #bbf7d0; color: #15803d; }
+    .feedback-alert--error { background: #fef2f2; border: 1.5px solid #fee2e2; color: #b91c1c; }
     .section-container { display: grid; gap: 2.5rem; animation: fadeIn 0.4s ease-out; }
     .section-header { display: flex; justify-content: space-between; align-items: flex-end; }
     .section-header h1 { margin: 0; font-size: 2.2rem; font-weight: 900; letter-spacing: -0.03em; }

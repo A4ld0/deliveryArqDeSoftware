@@ -42,9 +42,9 @@ import { SessionService } from '../core/session.service';
         </div>
       </aside>
 
-      <main class="content-area">
+      <div class="content-area">
         <router-outlet />
-      </main>
+      </div>
     </div>
   `,
   styles: `

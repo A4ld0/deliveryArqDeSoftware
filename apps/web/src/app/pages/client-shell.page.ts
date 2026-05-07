@@ -12,13 +12,18 @@ import type { OrderSummary } from '../core/models';
   imports: [CommonModule, RouterOutlet, RouterLink],
   template: `
     <div class="app-shell">
-      <main class="app-content">
+      <div class="app-content">
         @if (activeOrder(); as order) {
-          <div class="active-order-banner anim-slide-down">
+          <div
+            class="active-order-banner anim-slide-down"
+            role="status"
+            aria-live="polite"
+            [attr.aria-label]="'Pedido activo ' + order.id + ', estado ' + statusLabel(order.status)"
+          >
             <div class="order-info">
               <span class="status-dot pulsing"></span>
               <div class="text-group">
-                <strong>Pedido #{{ order.id }} - {{ order.status }}</strong>
+                <strong>Pedido #{{ order.id }} - {{ statusLabel(order.status) }}</strong>
                 <span>Tu pedido está en camino. {{ order.restaurant_name || 'Procesando...' }}</span>
               </div>
             </div>
@@ -26,7 +31,7 @@ import type { OrderSummary } from '../core/models';
           </div>
         }
         <router-outlet />
-      </main>
+      </div>
     </div>
   `,
   styles: `
@@ -97,5 +102,20 @@ export class ClientShellPageComponent {
     } catch (e) {
       console.error('Error checking active orders', e);
     }
+  }
+
+  protected statusLabel(status: string): string {
+    const labels: Record<string, string> = {
+      PENDING: 'Pendiente',
+      ACCEPTED: 'Aceptado',
+      READY_FOR_PICKUP: 'Listo para recoger',
+      ASSIGNED: 'Asignado',
+      IN_TRANSIT: 'En camino',
+      DELIVERED: 'Entregado',
+      CANCELLED: 'Cancelado',
+      REJECTED: 'Rechazado'
+    };
+
+    return labels[status] ?? status;
   }
 }

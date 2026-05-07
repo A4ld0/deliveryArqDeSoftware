@@ -1,3 +1,5 @@
+<a class="skip-link" href="#main-content">Saltar al contenido principal</a>
+
 <div class="shell" [class.shell--admin]="isFullWidthShell()">
   @if (!isFullWidthShell()) {
     <header class="topbar" [class.topbar--minimal]="profile()?.role !== 'client'">
@@ -72,7 +74,7 @@
     </header>
   }
 
-  <main class="main-viewport" [class.main-viewport--admin]="isFullWidthShell()">
+  <main id="main-content" class="main-viewport" [class.main-viewport--admin]="isFullWidthShell()" tabindex="-1">
     <router-outlet />
   </main>
 </div>

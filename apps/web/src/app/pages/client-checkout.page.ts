@@ -24,15 +24,13 @@ const DELIVERY_FEE = 25;
 
       @if (!selectedRestaurantId() || !cart().length) {
         <div class="empty-checkout anim-fade-in">
-          <div class="empty-icon">🛍️</div>
-          <h2>Tu carrito está vacío</h2>
-          <p>Parece que aún no has agregado nada de <strong>{{ selectedRestaurantName() || 'ningún restaurante' }}</strong>.</p>
+          <div class="empty-icon">Carrito</div>
+          <h2>Tu carrito esta vacio</h2>
+          <p>Parece que aun no has agregado nada de <strong>{{ selectedRestaurantName() || 'ningun restaurante' }}</strong>.</p>
           <button class="primary-btn" routerLink="/">Volver a la tienda</button>
         </div>
       } @else {
         <div class="checkout-grid anim-slide-up">
-          
-          <!-- LEFT: FORM & ITEMS -->
           <div class="checkout-main">
             <section class="checkout-section">
               <div class="section-header">
@@ -41,10 +39,22 @@ const DELIVERY_FEE = 25;
               </div>
               <div class="delivery-card">
                 <div class="input-group">
-                  <label for="checkout-delivery-address">Dirección completa</label>
+                  <label for="checkout-delivery-address">Direccion completa</label>
+                  <p id="checkout-delivery-help" class="field-help">
+                    Incluye calle, numero y referencias para facilitar la entrega.
+                  </p>
                   <div class="input-wrapper">
                     <svg aria-hidden="true" focusable="false" viewBox="0 0 24 24" class="input-icon"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 010-5 2.5 2.5 0 010 5z"/></svg>
-                    <input id="checkout-delivery-address" name="deliveryAddress" type="text" [(ngModel)]="deliveryAddress" placeholder="Ej. Av. Vallarta 123, Int 4" required autocomplete="street-address" />
+                    <input
+                      id="checkout-delivery-address"
+                      name="deliveryAddress"
+                      type="text"
+                      [(ngModel)]="deliveryAddress"
+                      placeholder="Ej. Av. Vallarta 123, Int 4"
+                      required
+                      autocomplete="street-address"
+                      aria-describedby="checkout-delivery-help"
+                    />
                   </div>
                 </div>
               </div>
@@ -53,19 +63,33 @@ const DELIVERY_FEE = 25;
             <section class="checkout-section">
               <div class="section-header">
                 <span class="step-num">2</span>
-                <h3>Método de pago</h3>
+                <h3 id="checkout-payment-heading">Metodo de pago</h3>
               </div>
-              <div class="payment-options" role="group" aria-label="Metodo de pago simulado">
-                <button type="button" class="pay-option" [class.active]="paymentMethod === 'SIMULATED_CARD'" [attr.aria-pressed]="paymentMethod === 'SIMULATED_CARD'" (click)="paymentMethod = 'SIMULATED_CARD'">
-                  <div class="pay-option__icon" aria-hidden="true">💳</div>
+              <div class="payment-options" role="radiogroup" aria-labelledby="checkout-payment-heading">
+                <button
+                  type="button"
+                  class="pay-option"
+                  role="radio"
+                  [class.active]="paymentMethod === 'SIMULATED_CARD'"
+                  [attr.aria-checked]="paymentMethod === 'SIMULATED_CARD'"
+                  (click)="paymentMethod = 'SIMULATED_CARD'"
+                >
+                  <div class="pay-option__icon" aria-hidden="true">Tarjeta</div>
                   <div class="pay-option__text">
-                    <strong>Tarjeta de Crédito/Débito</strong>
-                    <span>Pago seguro instantáneo</span>
+                    <strong>Tarjeta de credito o debito</strong>
+                    <span>Pago seguro instantaneo</span>
                   </div>
                   <div class="radio-circle"></div>
                 </button>
-                <button type="button" class="pay-option" [class.active]="paymentMethod === 'SIMULATED_CASH'" [attr.aria-pressed]="paymentMethod === 'SIMULATED_CASH'" (click)="paymentMethod = 'SIMULATED_CASH'">
-                  <div class="pay-option__icon" aria-hidden="true">💵</div>
+                <button
+                  type="button"
+                  class="pay-option"
+                  role="radio"
+                  [class.active]="paymentMethod === 'SIMULATED_CASH'"
+                  [attr.aria-checked]="paymentMethod === 'SIMULATED_CASH'"
+                  (click)="paymentMethod = 'SIMULATED_CASH'"
+                >
+                  <div class="pay-option__icon" aria-hidden="true">Efectivo</div>
                   <div class="pay-option__text">
                     <strong>Efectivo al recibir</strong>
                     <span>Paga en el domicilio</span>
@@ -80,9 +104,9 @@ const DELIVERY_FEE = 25;
                 <span class="step-num">3</span>
                 <h3>Resumen de productos</h3>
               </div>
-              <div class="items-list">
+              <div class="items-list" role="list" aria-label="Productos del pedido">
                 @for (item of cart(); track item.productId) {
-                  <div class="item-row">
+                  <div class="item-row" role="listitem">
                     <div class="item-qty">{{ item.quantity }}x</div>
                     <div class="item-name">{{ item.name }}</div>
                     <div class="item-price">\${{ (item.price * item.quantity).toFixed(2) }}</div>
@@ -92,7 +116,6 @@ const DELIVERY_FEE = 25;
             </section>
           </div>
 
-          <!-- RIGHT: SUMMARY & PAY -->
           <aside class="checkout-summary" aria-label="Resumen de pago">
             <div class="summary-card">
               <h3>Resumen de pago</h3>
@@ -102,7 +125,7 @@ const DELIVERY_FEE = 25;
                   <span>\${{ cartSubtotal().toFixed(2) }}</span>
                 </div>
                 <div class="summary-row">
-                  <span>Costo de envío</span>
+                  <span>Costo de envio</span>
                   <span>\${{ deliveryFee.toFixed(2) }}</span>
                 </div>
                 <div class="summary-row total">
@@ -115,14 +138,21 @@ const DELIVERY_FEE = 25;
                 <div class="error-msg anim-shake" role="alert">{{ errorMessage }}</div>
               }
 
-              <button type="button" class="confirm-btn" [disabled]="placingOrder || !deliveryAddress" [attr.aria-busy]="placingOrder" (click)="confirmOrder()">
+              <button
+                type="button"
+                class="confirm-btn"
+                [disabled]="placingOrder || !deliveryAddress"
+                [attr.aria-busy]="placingOrder"
+                aria-describedby="checkout-terms"
+                (click)="confirmOrder()"
+              >
                 @if (placingOrder) {
                   <span class="loader"></span>
                 } @else {
                   Confirmar y Pagar
                 }
               </button>
-              <p class="terms">Al confirmar, aceptas nuestros términos y condiciones de servicio.</p>
+              <p id="checkout-terms" class="terms">Al confirmar, aceptas nuestros terminos y condiciones de servicio.</p>
             </div>
           </aside>
         </div>
@@ -131,18 +161,17 @@ const DELIVERY_FEE = 25;
   `,
   styles: `
     .checkout-container { max-width: 1200px; margin: 0 auto; padding-bottom: 5rem; }
-    
+
     .checkout-header { display: flex; align-items: center; gap: 1.5rem; margin-bottom: 2.5rem; }
     .checkout-header h1 { margin: 0; font-size: 2rem; font-weight: 850; letter-spacing: -0.02em; }
     .back-btn { width: 44px; height: 44px; border-radius: 50%; background: white; border: 1.5px solid var(--line); display: grid; place-items: center; cursor: pointer; color: var(--ink); transition: all 0.2s; }
     .back-btn:hover { border-color: var(--primary); color: var(--primary); transform: scale(1.05); }
 
     .empty-checkout { text-align: center; padding: 4rem 2rem; background: white; border-radius: 24px; border: 1.5px solid var(--line); }
-    .empty-icon { font-size: 4rem; margin-bottom: 1.5rem; }
+    .empty-icon { font-size: 2rem; margin-bottom: 1.5rem; font-weight: 800; }
     .primary-btn { background: var(--primary); color: white; border: none; padding: 1rem 2rem; border-radius: 99px; font-weight: 700; cursor: pointer; margin-top: 1.5rem; }
 
     .checkout-grid { display: grid; grid-template-columns: 1fr 400px; gap: 2.5rem; align-items: flex-start; }
-    
     .checkout-main { display: grid; gap: 1.5rem; }
     .checkout-section { background: white; border-radius: 24px; border: 1.5px solid var(--line); padding: 1.8rem; }
     .section-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
@@ -152,6 +181,7 @@ const DELIVERY_FEE = 25;
     .delivery-card { display: grid; gap: 1rem; }
     .input-group { display: grid; gap: 0.5rem; }
     .input-group label { font-size: 0.85rem; font-weight: 700; color: var(--muted); }
+    .field-help { margin: 0; font-size: 0.82rem; color: var(--muted); }
     .input-wrapper { position: relative; }
     .input-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); width: 20px; height: 20px; color: var(--muted); fill: currentColor; }
     .input-wrapper input { width: 100%; padding: 1rem 1rem 1rem 3rem; border-radius: 14px; border: 1.5px solid var(--line); font-size: 1rem; background: var(--bg-app); transition: all 0.2s; }
@@ -161,7 +191,7 @@ const DELIVERY_FEE = 25;
     .pay-option { display: flex; align-items: center; gap: 1.2rem; padding: 1.2rem; border-radius: 18px; border: 2px solid var(--line); background: white; cursor: pointer; text-align: left; transition: all 0.2s; position: relative; }
     .pay-option:hover { border-color: var(--primary-mid); background: var(--bg-app); }
     .pay-option.active { border-color: var(--primary); background: var(--primary-soft); }
-    .pay-option__icon { font-size: 1.8rem; }
+    .pay-option__icon { min-width: 72px; font-size: 0.9rem; font-weight: 800; }
     .pay-option__text { flex: 1; display: grid; gap: 2px; }
     .pay-option__text strong { font-size: 1rem; font-weight: 800; }
     .pay-option__text span { font-size: 0.8rem; color: var(--muted); }
@@ -249,8 +279,7 @@ export class ClientCheckoutPageComponent {
     try {
       const currentAddress = this.deliveryAddress.trim();
       localStorage.setItem('last_delivery_address', currentAddress);
-      
-      // Si la persona no tiene dirección en su perfil, o es diferente, la actualizamos
+
       const p = this.profile();
       if (p && (!p.address || p.address !== currentAddress)) {
         try {
@@ -261,7 +290,7 @@ export class ClientCheckoutPageComponent {
             address: currentAddress
           });
         } catch (e) {
-          console.warn('No se pudo actualizar la dirección del perfil, pero procedemos con el pedido.');
+          console.warn('No se pudo actualizar la direccion del perfil, pero procedemos con el pedido.');
         }
       }
 
@@ -283,8 +312,9 @@ export class ClientCheckoutPageComponent {
 
   private toError(error: unknown, fallback: string): string {
     if (error instanceof HttpErrorResponse) {
-      return (error.error as any)?.error || fallback;
+      return (error.error as { error?: string } | null)?.error || fallback;
     }
+
     return fallback;
   }
 }

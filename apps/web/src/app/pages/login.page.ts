@@ -48,14 +48,16 @@ import { SessionService } from '../core/session.service';
             </header>
 
             <!-- Píldoras de Navegación -->
-            <nav class="auth-tabs" role="tablist" aria-label="Acceso a la plataforma">
+            <nav class="auth-tabs" role="tablist" aria-label="Acceso a la plataforma" aria-orientation="horizontal">
               <button 
                 type="button"
                 role="tab"
                 id="login-tab"
                 aria-controls="auth-login-panel"
                 [attr.aria-selected]="mode() === 'login'"
+                [attr.tabindex]="mode() === 'login' ? 0 : -1"
                 [class.active]="mode() === 'login'" 
+                (keydown)="onTabKeydown($event, 'login')"
                 (click)="setMode('login')">
                 Ingresar
               </button>
@@ -65,13 +67,15 @@ import { SessionService } from '../core/session.service';
                 id="signup-tab"
                 aria-controls="auth-login-panel"
                 [attr.aria-selected]="mode() === 'signup'"
+                [attr.tabindex]="mode() === 'signup' ? 0 : -1"
                 [class.active]="mode() === 'signup'" 
+                (keydown)="onTabKeydown($event, 'signup')"
                 (click)="setMode('signup')">
                 Registrarse
               </button>
             </nav>
 
-            <form id="auth-login-panel" class="auth-form" role="tabpanel" [attr.aria-labelledby]="mode() === 'login' ? 'login-tab' : 'signup-tab'" (submit)="onSubmitAuth($event)">
+            <form id="auth-login-panel" class="auth-form" role="tabpanel" [attr.aria-labelledby]="mode() === 'login' ? 'login-tab' : 'signup-tab'" [attr.aria-busy]="loadingAuth()" (submit)="onSubmitAuth($event)">
               <div class="input-group">
                 <label class="sr-only" for="email">Correo electrónico</label>
                 <input type="email" id="email" [(ngModel)]="email" name="email" placeholder="Correo electrónico" required autocomplete="email" />
@@ -82,7 +86,7 @@ import { SessionService } from '../core/session.service';
                 <input type="password" id="password" [(ngModel)]="password" name="password" placeholder="Contraseña" required minlength="6" autocomplete="current-password" />
               </div>
 
-              <button type="submit" class="btn-primary-auth" [disabled]="loadingAuth()">
+              <button type="submit" class="btn-primary-auth" [disabled]="loadingAuth()" [attr.aria-busy]="loadingAuth()">
                 @if (loadingAuth()) {
                   <span class="auth-spinner"></span>
                 } @else {
@@ -100,7 +104,7 @@ import { SessionService } from '../core/session.service';
                     <p id="profile-dialog-description">Cuéntanos un poco más sobre ti para terminar.</p>
                   </header>
 
-                  <form class="profile-form" (submit)="onSubmitProfile($event)">
+                  <form class="profile-form" [attr.aria-busy]="loadingProfile()" (submit)="onSubmitProfile($event)">
                     <div class="input-group">
                       <label class="sr-only" for="fullName">Nombre completo</label>
                       <input type="text" id="fullName" [(ngModel)]="fullName" name="fullName" placeholder="Tu nombre y apellido" required autocomplete="name" />
@@ -108,23 +112,23 @@ import { SessionService } from '../core/session.service';
 
                     <div class="role-selector">
                       <label id="role-selector-label">¿Cómo vas a usar la app?</label>
-                      <div class="role-options" role="group" aria-labelledby="role-selector-label">
+                      <div class="role-options" role="radiogroup" aria-labelledby="role-selector-label">
                         <!-- Opciones amigables -->
-                        <button type="button" class="role-card" [class.active]="role === 'client'" [attr.aria-pressed]="role === 'client'" (click)="role = 'client'">
+                        <button type="button" class="role-card" role="radio" [class.active]="role === 'client'" [attr.aria-checked]="role === 'client'" [attr.tabindex]="role === 'client' ? 0 : -1" (click)="role = 'client'">
                           <span class="role-emoji">🍔</span>
                           <div class="role-meta">
                             <strong>Quiero pedir comida</strong>
                             <small>Cliente</small>
                           </div>
                         </button>
-                        <button type="button" class="role-card" [class.active]="role === 'restaurant'" [attr.aria-pressed]="role === 'restaurant'" (click)="role = 'restaurant'">
+                        <button type="button" class="role-card" role="radio" [class.active]="role === 'restaurant'" [attr.aria-checked]="role === 'restaurant'" [attr.tabindex]="role === 'restaurant' ? 0 : -1" (click)="role = 'restaurant'">
                           <span class="role-emoji">🏪</span>
                           <div class="role-meta">
                             <strong>Quiero vender</strong>
                             <small>Restaurante / Tienda</small>
                           </div>
                         </button>
-                        <button type="button" class="role-card" [class.active]="role === 'driver'" [attr.aria-pressed]="role === 'driver'" (click)="role = 'driver'">
+                        <button type="button" class="role-card" role="radio" [class.active]="role === 'driver'" [attr.aria-checked]="role === 'driver'" [attr.tabindex]="role === 'driver' ? 0 : -1" (click)="role = 'driver'">
                           <span class="role-emoji">🛵</span>
                           <div class="role-meta">
                             <strong>Quiero repartir</strong>
@@ -134,7 +138,7 @@ import { SessionService } from '../core/session.service';
                       </div>
                     </div>
 
-                    <button type="submit" class="btn-primary-auth" [disabled]="loadingProfile()">
+                    <button type="submit" class="btn-primary-auth" [disabled]="loadingProfile()" [attr.aria-busy]="loadingProfile()">
                       Comenzar a usar E4
                     </button>
                   </form>
@@ -374,6 +378,13 @@ export class LoginPageComponent {
     this.mode.set(next);
     this.message.set('');
     this.errorMessage.set('');
+  }
+
+  protected onTabKeydown(event: KeyboardEvent, current: 'login' | 'signup'): void {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+
+    event.preventDefault();
+    this.setMode(current === 'login' ? 'signup' : 'login');
   }
 
   private toErrorMessage(error: unknown, fallback: string): string {

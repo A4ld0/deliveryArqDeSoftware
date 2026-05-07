@@ -58,9 +58,9 @@ import { SessionService } from '../core/session.service';
           </div>
         </header>
 
-        <main class="admin-content">
+        <div class="admin-content">
           <router-outlet />
-        </main>
+        </div>
       </div>
     </div>
   `,

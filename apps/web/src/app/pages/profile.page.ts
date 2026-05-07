@@ -2,10 +2,9 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { ApiService } from '../core/api.service';
 import { ProfileService } from '../core/profile.service';
 import { SessionService } from '../core/session.service';
-import { ApiService } from '../core/api.service';
-import type { UserRole } from '../core/models';
 
 @Component({
   selector: 'app-profile-page',
@@ -22,7 +21,14 @@ import type { UserRole } from '../core/models';
             <h2>{{ profile()?.fullName }}</h2>
             <p>{{ roleLabel(profile()?.role) }}</p>
           </div>
-          <button class="logout-top-btn" (click)="logout()">Cerrar Sesión</button>
+          <button
+            type="button"
+            class="logout-top-btn"
+            (click)="logout()"
+            aria-label="Cerrar sesion"
+          >
+            Cerrar Sesion
+          </button>
         </header>
 
         @if (loading()) {
@@ -31,7 +37,6 @@ import type { UserRole } from '../core/models';
             <p>Sincronizando perfil...</p>
           </div>
         } @else {
-          <!-- DRIVER STATS -->
           @if (profile()?.role === 'driver' && driverStats()) {
             <div class="driver-stats-grid anim-slide-up">
               <div class="stat-box">
@@ -45,26 +50,54 @@ import type { UserRole } from '../core/models';
             </div>
           }
 
-          <form (submit)="saveProfile($event)" class="profile-form">
+          <form (submit)="saveProfile($event)" class="profile-form" [attr.aria-busy]="saving()">
             <div class="form-grid">
               <div class="form-group">
-                <label>Nombre Completo</label>
-                <input type="text" [(ngModel)]="formData.fullName" name="fullName" required placeholder="Tu nombre">
+                <label for="profile-full-name">Nombre Completo</label>
+                <input
+                  id="profile-full-name"
+                  type="text"
+                  [(ngModel)]="formData.fullName"
+                  name="fullName"
+                  required
+                  placeholder="Tu nombre"
+                  autocomplete="name"
+                >
               </div>
 
               <div class="form-group">
-                <label>Correo (No editable)</label>
-                <input type="email" [value]="profile()?.email" disabled class="disabled-input">
+                <label for="profile-email">Correo (No editable)</label>
+                <input
+                  id="profile-email"
+                  type="email"
+                  [value]="profile()?.email"
+                  disabled
+                  class="disabled-input"
+                >
               </div>
 
               <div class="form-group">
-                <label>Teléfono de contacto</label>
-                <input type="tel" [(ngModel)]="formData.phone" name="phone" placeholder="Ej. 3312345678">
+                <label for="profile-phone">Telefono de contacto</label>
+                <input
+                  id="profile-phone"
+                  type="tel"
+                  [(ngModel)]="formData.phone"
+                  name="phone"
+                  placeholder="Ej. 3312345678"
+                  autocomplete="tel"
+                >
               </div>
 
               <div class="form-group">
-                <label>Dirección de referencia</label>
-                <textarea [(ngModel)]="formData.address" name="address" placeholder="Calle, número, colonia..." rows="3"></textarea>
+                <label for="profile-address">Direccion de referencia</label>
+                <textarea
+                  id="profile-address"
+                  [(ngModel)]="formData.address"
+                  name="address"
+                  placeholder="Calle, numero, colonia..."
+                  rows="3"
+                  autocomplete="street-address"
+                ></textarea>
               </div>
             </div>
 
@@ -73,14 +106,18 @@ import type { UserRole } from '../core/models';
                 @if (saving()) { <span class="spinner spinner-white"></span> }
                 @else { Guardar Cambios }
               </button>
-              
+
               <button type="button" class="btn-logout-mobile" (click)="logout()">
-                Cerrar Sesión
+                Cerrar Sesion
               </button>
             </div>
 
-            @if (message()) { <div class="alert alert-success">{{ message() }}</div> }
-            @if (error()) { <div class="alert alert-error">{{ error() }}</div> }
+            @if (message()) {
+              <div class="alert alert-success" role="status" aria-live="polite">{{ message() }}</div>
+            }
+            @if (error()) {
+              <div class="alert alert-error" role="alert">{{ error() }}</div>
+            }
           </form>
         }
       </div>
@@ -89,7 +126,7 @@ import type { UserRole } from '../core/models';
   styles: `
     .profile-container { max-width: 650px; margin: 3rem auto; padding: 0 1.5rem; }
     .profile-card { background: white; border-radius: 32px; border: 1.5px solid var(--line); padding: 3rem; box-shadow: 0 10px 40px rgba(0,0,0,0.03); }
-    
+
     .profile-header { display: flex; align-items: center; gap: 2rem; margin-bottom: 3rem; }
     .profile-avatar { width: 90px; height: 90px; border-radius: 50%; background: linear-gradient(135deg, var(--primary) 0%, #ff6b4a 100%); display: grid; place-items: center; font-size: 2.5rem; font-weight: 900; color: white; border: 4px solid white; box-shadow: 0 10px 25px var(--primary-soft); }
     .profile-header-text h2 { margin: 0; font-size: 2rem; font-weight: 900; letter-spacing: -0.02em; }
@@ -107,7 +144,7 @@ import type { UserRole } from '../core/models';
     .form-grid { display: grid; gap: 1.5rem; }
     .form-group { display: grid; gap: 0.6rem; }
     .form-group label { font-size: 0.85rem; font-weight: 850; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
-    
+
     input, textarea { padding: 1.1rem; border-radius: 16px; border: 1.5px solid var(--line); background: var(--bg-app); font-family: inherit; font-size: 1rem; font-weight: 600; transition: 0.2s; }
     input:focus, textarea:focus { outline: none; border-color: var(--primary); background: white; box-shadow: 0 0 0 4px var(--primary-soft); }
     .disabled-input { background: #f8f9fa; color: var(--muted); cursor: not-allowed; opacity: 0.8; }
@@ -133,6 +170,7 @@ import type { UserRole } from '../core/models';
       .profile-header { flex-direction: column; text-align: center; }
       .profile-card { padding: 2rem; }
     }
+
     @keyframes spin { to { transform: rotate(360deg); } }
   `
 })
@@ -141,11 +179,11 @@ export class ProfilePageComponent implements OnInit {
   private readonly sessionService = inject(SessionService);
   private readonly apiService = inject(ApiService);
   private readonly router = inject(Router);
-  
+
   protected readonly profile = this.profileService.profile;
   protected readonly loading = this.profileService.loading;
   protected readonly driverStats = signal<{ total_delivered: number; total_earnings: string } | null>(null);
-  
+
   protected formData = {
     fullName: '',
     phone: '',
@@ -164,6 +202,7 @@ export class ProfilePageComponent implements OnInit {
         phone: user.phone ?? '',
         address: user.address ?? ''
       };
+
       if (user.role === 'driver') {
         void this.loadDriverStats();
       }
@@ -195,8 +234,8 @@ export class ProfilePageComponent implements OnInit {
         phone: this.formData.phone,
         address: this.formData.address
       });
-      
-      this.message.set('Perfil actualizado con éxito');
+
+      this.message.set('Perfil actualizado con exito');
       setTimeout(() => this.message.set(''), 3000);
     } catch (err) {
       this.error.set('Error al actualizar el perfil');
@@ -213,12 +252,13 @@ export class ProfilePageComponent implements OnInit {
   }
 
   roleLabel(role?: string): string {
-    const map: any = {
+    const map: Record<string, string> = {
       client: 'Cliente E4',
       restaurant: 'Socio E4 - Negocio',
       driver: 'Socio E4 - Repartidor',
       admin: 'Administrador E4'
     };
-    return map[role || ''] ?? 'Usuario';
+
+    return map[role ?? ''] ?? 'Usuario';
   }
 }

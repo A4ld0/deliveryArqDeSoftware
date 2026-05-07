@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, inject, signal } from '@angular/core';
+import { Component, HostListener, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { ApiService } from '../core/api.service';
 import { ClientOrderStateService } from '../core/client-order-state.service';
@@ -134,20 +134,20 @@ const GRADIENTS = [
 
           <aside class="cart-sidebar" [class.cart-sidebar--open]="isMobileCartOpen()" aria-label="Carrito de compra">
             <div id="cart-panel" class="cart-sidebar__sticky">
-              <button type="button" class="cart-header" (click)="toggleMobileCart()" [attr.aria-expanded]="isMobileCartOpen()" aria-controls="cart-panel">
-                <h3>Tu Pedido</h3>
+              <button type="button" class="cart-header" (click)="toggleMobileCart()" [attr.aria-expanded]="showCartDetails()" aria-controls="cart-panel" [attr.aria-label]="'Resumen del carrito. ' + cartItemsCount() + ' productos'">
+                <span class="cart-title">Tu Pedido</span>
                 <span class="item-count">{{ cartItemsCount() }} items</span>
                 <svg class="mobile-chevron" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m18 15-6-6-6 6"/></svg>
               </button>
 
-              @if (!cart().length) {
+              @if (showCartDetails() && !cart().length) {
                 <div class="cart-empty">
                   <div class="empty-icon">🛒</div>
                   <p>Tu carrito está vacío</p>
                   <span>Agrega algunos productos para comenzar tu pedido.</span>
                 </div>
-              } @else {
-                <div class="cart-items">
+              } @else if (showCartDetails()) {
+                <div class="cart-items" aria-live="polite">
                   @for (item of cart(); track item.productId) {
                     <div class="cart-item">
                       <div class="cart-item__qty">
@@ -256,7 +256,7 @@ const GRADIENTS = [
     .cart-sidebar { position: sticky; top: 100px; }
     .cart-sidebar__sticky { background: var(--panel); border: 1.5px solid var(--line); border-radius: 24px; padding: 2rem; display: flex; flex-direction: column; min-height: 400px; box-shadow: var(--shadow-sm); }
     .cart-header { width: 100%; display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 2rem; padding: 0 0 1rem; border: 0; border-bottom: 1.5px solid var(--line); background: transparent; color: inherit; text-align: left; font: inherit; }
-    .cart-header h3 { margin: 0; font-size: 1.3rem; font-weight: 900; }
+    .cart-title { margin: 0; font-size: 1.3rem; font-weight: 900; }
     .item-count { font-weight: 700; color: var(--muted); font-size: 0.85rem; }
 
     .cart-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; color: var(--muted); }
@@ -339,9 +339,22 @@ export class ClientShopPageComponent {
   protected loadingProducts = false;
 
   protected readonly isMobileCartOpen = signal(false);
+  protected readonly isMobileLayout = signal(typeof window !== 'undefined' ? window.innerWidth <= 1100 : false);
+  protected readonly showCartDetails = computed(
+    () => !this.isMobileLayout() || this.isMobileCartOpen()
+  );
 
   constructor() {
     this.boot();
+  }
+
+  @HostListener('window:resize')
+  protected onResize(): void {
+    const isMobile = window.innerWidth <= 1100;
+    this.isMobileLayout.set(isMobile);
+    if (!isMobile) {
+      this.isMobileCartOpen.set(false);
+    }
   }
 
   protected scrollToGrid() {
