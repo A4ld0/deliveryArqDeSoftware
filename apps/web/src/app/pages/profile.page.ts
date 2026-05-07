@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { ProfileService } from '../core/profile.service';
 import { SessionService } from '../core/session.service';
 import { ApiService } from '../core/api.service';
@@ -139,6 +140,7 @@ export class ProfilePageComponent implements OnInit {
   private readonly profileService = inject(ProfileService);
   private readonly sessionService = inject(SessionService);
   private readonly apiService = inject(ApiService);
+  private readonly router = inject(Router);
   
   protected readonly profile = this.profileService.profile;
   protected readonly loading = this.profileService.loading;
@@ -206,6 +208,8 @@ export class ProfilePageComponent implements OnInit {
 
   async logout() {
     await this.sessionService.signOut();
+    this.profileService.clear();
+    await this.router.navigateByUrl('/auth/login');
   }
 
   roleLabel(role?: string): string {

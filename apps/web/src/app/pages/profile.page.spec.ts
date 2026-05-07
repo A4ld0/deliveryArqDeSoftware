@@ -1,5 +1,6 @@
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { Router } from '@angular/router';
 import { ApiService } from '../core/api.service';
 import type { ApiUserProfile } from '../core/models';
 import { ProfileService } from '../core/profile.service';
@@ -16,9 +17,11 @@ describe('ProfilePageComponent', () => {
     loading: typeof loadingSignal;
     ensureLoaded: jasmine.Spy;
     upsertProfile: jasmine.Spy;
+    clear: jasmine.Spy;
   };
   let sessionService: { signOut: jasmine.Spy };
   let apiService: { getDriverStats: jasmine.Spy };
+  let router: { navigateByUrl: jasmine.Spy };
 
   beforeEach(async () => {
     profileSignal = signal<ApiUserProfile | null>({
@@ -35,7 +38,8 @@ describe('ProfilePageComponent', () => {
       profile: profileSignal,
       loading: loadingSignal,
       ensureLoaded: jasmine.createSpy('ensureLoaded').and.resolveTo(profileSignal()),
-      upsertProfile: jasmine.createSpy('upsertProfile').and.resolveTo()
+      upsertProfile: jasmine.createSpy('upsertProfile').and.resolveTo(),
+      clear: jasmine.createSpy('clear')
     };
     sessionService = {
       signOut: jasmine.createSpy('signOut').and.resolveTo()
@@ -46,13 +50,17 @@ describe('ProfilePageComponent', () => {
         total_earnings: '400.00'
       })
     };
+    router = {
+      navigateByUrl: jasmine.createSpy('navigateByUrl').and.resolveTo(true)
+    };
 
     await TestBed.configureTestingModule({
       imports: [ProfilePageComponent],
       providers: [
         { provide: ProfileService, useValue: profileService },
         { provide: SessionService, useValue: sessionService },
-        { provide: ApiService, useValue: apiService }
+        { provide: ApiService, useValue: apiService },
+        { provide: Router, useValue: router }
       ]
     }).compileComponents();
 
@@ -129,6 +137,8 @@ describe('ProfilePageComponent', () => {
     await (component as any).logout();
 
     expect(sessionService.signOut).toHaveBeenCalled();
+    expect(profileService.clear).toHaveBeenCalled();
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/auth/login');
   });
 
   it('returns friendly labels by role', () => {

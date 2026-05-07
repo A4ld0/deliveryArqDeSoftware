@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { ProfileService } from '../core/profile.service';
 import { SessionService } from '../core/session.service';
 
 @Component({
@@ -127,9 +128,13 @@ import { SessionService } from '../core/session.service';
   `
 })
 export class DriverShellPageComponent {
+  private readonly profileService = inject(ProfileService);
   private readonly sessionService = inject(SessionService);
+  private readonly router = inject(Router);
 
   async logout() {
     await this.sessionService.signOut();
+    this.profileService.clear();
+    await this.router.navigateByUrl('/auth/login');
   }
 }
