@@ -123,7 +123,10 @@ const DELIVERY_FEE = 25;
                 <div class="error-msg anim-shake">{{ errorMessage }}</div>
               }
 
-              <button class="confirm-btn" [disabled]="placingOrder || !deliveryAddress" (click)="confirmOrder()">
+              @if (addressTooShort) {
+                <div class="warn-msg">La dirección debe tener al menos 6 caracteres.</div>
+              }
+              <button class="confirm-btn" [disabled]="placingOrder || !deliveryAddress || addressTooShort" (click)="confirmOrder()">
                 @if (placingOrder) {
                   <span class="loader"></span>
                 } @else {
@@ -197,6 +200,7 @@ const DELIVERY_FEE = 25;
     .confirm-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
     .error-msg { background: rgba(255,0,0,0.1); color: #ff6b6b; padding: 0.8rem; border-radius: 12px; font-size: 0.85rem; font-weight: 700; margin-bottom: 1rem; text-align: center; }
+    .warn-msg { background: rgba(251,191,36,0.15); color: #d97706; padding: 0.7rem 1rem; border-radius: 12px; font-size: 0.82rem; font-weight: 700; margin-bottom: 0.8rem; text-align: center; }
     .terms { font-size: 0.72rem; opacity: 0.5; text-align: center; line-height: 1.4; }
 
     .loader { width: 24px; height: 24px; border: 3px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; }
@@ -234,6 +238,10 @@ export class ClientCheckoutPageComponent {
   protected paymentMethod = 'SIMULATED_CARD';
   protected placingOrder = false;
   protected errorMessage = '';
+
+  protected get addressTooShort(): boolean {
+    return this.deliveryAddress.trim().length > 0 && this.deliveryAddress.trim().length < 6;
+  }
 
   protected get profileLat(): number {
     const v = Number(this.profile()?.latitude);
@@ -313,7 +321,13 @@ export class ClientCheckoutPageComponent {
 
   private toError(error: unknown, fallback: string): string {
     if (error instanceof HttpErrorResponse) {
-      return (error.error as any)?.error || fallback;
+      const body = error.error as { error?: string; details?: { fieldErrors?: Record<string, string[]> } } | null;
+      const fieldErrors = body?.details?.fieldErrors;
+      if (fieldErrors) {
+        const first = Object.values(fieldErrors).flat()[0];
+        if (first) return first;
+      }
+      return body?.error || fallback;
     }
     return fallback;
   }

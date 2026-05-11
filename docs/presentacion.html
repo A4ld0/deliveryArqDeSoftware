@@ -1,0 +1,1227 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>E4 Delivery — Presentación de Arquitectura</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --primary: #f85c23;
+    --ink: #0f0f0f;
+    --muted: #6b7280;
+    --line: #e5e7eb;
+    --bg: #f9fafb;
+    --white: #ffffff;
+    --green: #22c55e;
+    --blue: #3b82f6;
+    --yellow: #f59e0b;
+    --purple: #8b5cf6;
+  }
+
+  html, body { width: 100%; height: 100%; overflow: hidden; font-family: -apple-system, 'Segoe UI', sans-serif; background: #000; }
+
+  /* ── SLIDE CONTAINER ── */
+  .deck { width: 100vw; height: 100vh; position: relative; }
+
+  .slide {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    padding: 4rem 6rem;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.5s ease, transform 0.5s ease;
+    transform: translateY(30px);
+  }
+  .slide.active {
+    opacity: 1; pointer-events: all; transform: translateY(0);
+  }
+
+  /* ── PROGRESS BAR ── */
+  #progress {
+    position: fixed; top: 0; left: 0; height: 3px;
+    background: var(--primary); transition: width 0.4s ease; z-index: 100;
+  }
+
+  /* ── NAVIGATION ── */
+  .nav {
+    position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 1.5rem; z-index: 100;
+  }
+  .nav button {
+    width: 44px; height: 44px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1);
+    color: white; font-size: 1.2rem; cursor: pointer; backdrop-filter: blur(8px);
+    transition: all 0.2s; display: grid; place-items: center;
+  }
+  .nav button:hover { background: rgba(255,255,255,0.25); border-color: rgba(255,255,255,0.5); }
+  .nav button:disabled { opacity: 0.3; cursor: not-allowed; }
+  #slide-count { color: rgba(255,255,255,0.6); font-size: 0.85rem; font-weight: 700; min-width: 60px; text-align: center; }
+
+  /* ── SLIDE STYLES ── */
+
+  /* COVER */
+  .slide-cover {
+    background: linear-gradient(135deg, #0f0f0f 0%, #1a0a00 50%, #0f0f0f 100%);
+    text-align: center;
+  }
+  .cover-logo {
+    width: 100px; height: 100px; background: var(--primary);
+    border-radius: 28px; display: grid; place-items: center;
+    font-size: 2.5rem; font-weight: 900; color: white; margin: 0 auto 2rem;
+    box-shadow: 0 20px 60px rgba(248,92,35,0.4);
+  }
+  .cover-title { font-size: 4rem; font-weight: 900; color: white; letter-spacing: -0.04em; line-height: 1.1; }
+  .cover-title span { color: var(--primary); }
+  .cover-sub { font-size: 1.4rem; color: rgba(255,255,255,0.5); font-weight: 500; margin-top: 1rem; }
+  .cover-tags { display: flex; gap: 1rem; justify-content: center; margin-top: 2.5rem; flex-wrap: wrap; }
+  .tag { padding: 0.4rem 1.2rem; border-radius: 99px; font-size: 0.8rem; font-weight: 700; }
+  .tag-orange { background: rgba(248,92,35,0.15); color: var(--primary); border: 1px solid rgba(248,92,35,0.3); }
+  .tag-white  { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.7); border: 1px solid rgba(255,255,255,0.15); }
+
+  /* WHITE SLIDES */
+  .slide-white { background: var(--white); }
+  .slide-dark  { background: var(--ink); }
+  .slide-gray  { background: var(--bg); }
+
+  /* GENERAL TEXT */
+  .slide-title {
+    font-size: 2.8rem; font-weight: 900; letter-spacing: -0.04em;
+    color: var(--ink); margin-bottom: 0.5rem;
+  }
+  .slide-title.white { color: white; }
+  .slide-title span { color: var(--primary); }
+  .slide-sub {
+    font-size: 1.1rem; color: var(--muted); font-weight: 500; margin-bottom: 3rem;
+  }
+  .slide-sub.white { color: rgba(255,255,255,0.5); }
+
+  /* SECTION LABEL */
+  .section-label {
+    position: absolute; top: 2.5rem; left: 6rem;
+    font-size: 0.75rem; font-weight: 800; text-transform: uppercase;
+    letter-spacing: 0.12em; color: var(--primary);
+  }
+  .section-label.dark { color: rgba(255,255,255,0.4); }
+
+  /* GRID LAYOUTS */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; width: 100%; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem; width: 100%; }
+  .grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 1.2rem; width: 100%; }
+
+  /* CARDS */
+  .card {
+    background: white; border-radius: 20px; border: 1.5px solid var(--line);
+    padding: 1.8rem; display: flex; flex-direction: column; gap: 0.8rem;
+  }
+  .card.dark { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.1); }
+  .card-icon { font-size: 2rem; }
+  .card-title { font-size: 1.1rem; font-weight: 800; color: var(--ink); }
+  .card-title.white { color: white; }
+  .card-desc { font-size: 0.85rem; color: var(--muted); line-height: 1.6; font-weight: 500; }
+  .card-desc.white { color: rgba(255,255,255,0.55); }
+
+  /* ROLE CARDS */
+  .role-card {
+    border-radius: 24px; padding: 2rem 1.8rem;
+    display: flex; flex-direction: column; gap: 1rem; position: relative; overflow: hidden;
+  }
+  .role-card::before {
+    content: ''; position: absolute; inset: 0; opacity: 0.08;
+  }
+  .role-client  { background: linear-gradient(135deg, #eff6ff, #dbeafe); border: 2px solid #bfdbfe; }
+  .role-restaurant { background: linear-gradient(135deg, #fef3c7, #fde68a); border: 2px solid #fcd34d; }
+  .role-driver  { background: linear-gradient(135deg, #f0fdf4, #dcfce7); border: 2px solid #86efac; }
+  .role-admin   { background: linear-gradient(135deg, #fdf4ff, #f3e8ff); border: 2px solid #d8b4fe; }
+  .role-icon    { font-size: 2.2rem; }
+  .role-name    { font-size: 1.3rem; font-weight: 900; color: var(--ink); }
+  .role-items   { list-style: none; display: grid; gap: 0.4rem; }
+  .role-items li { font-size: 0.82rem; font-weight: 600; color: var(--ink); opacity: 0.75; display: flex; align-items: center; gap: 0.5rem; }
+  .role-items li::before { content: '→'; color: var(--primary); font-weight: 900; }
+
+  /* STACK TABLE */
+  .stack-table { width: 100%; border-collapse: collapse; }
+  .stack-table th {
+    text-align: left; font-size: 0.7rem; font-weight: 800; text-transform: uppercase;
+    letter-spacing: 0.1em; color: var(--muted); padding: 0 1rem 0.8rem; border-bottom: 2px solid var(--line);
+  }
+  .stack-table td {
+    padding: 0.85rem 1rem; font-size: 0.95rem; font-weight: 600;
+    border-bottom: 1px solid var(--line); vertical-align: middle;
+  }
+  .stack-table tr:last-child td { border-bottom: none; }
+  .stack-table td:first-child { color: var(--muted); font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; }
+  .stack-table td:last-child { color: var(--ink); }
+  .badge { display: inline-block; padding: 0.2rem 0.7rem; border-radius: 99px; font-size: 0.72rem; font-weight: 800; }
+  .badge-orange { background: rgba(248,92,35,0.1); color: var(--primary); }
+  .badge-blue   { background: rgba(59,130,246,0.1); color: var(--blue); }
+  .badge-green  { background: rgba(34,197,94,0.1); color: var(--green); }
+  .badge-gray   { background: var(--bg); color: var(--muted); }
+
+  /* ARCHITECTURE DIAGRAM */
+  .arch-diagram {
+    display: flex; flex-direction: column; align-items: center; gap: 0; width: 100%;
+  }
+  .arch-layer {
+    display: flex; align-items: center; gap: 1rem; width: 100%;
+    padding: 1rem 1.5rem; border-radius: 16px; position: relative;
+  }
+  .arch-layer-label {
+    font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em;
+    min-width: 80px; color: var(--muted);
+  }
+  .arch-boxes { display: flex; gap: 0.8rem; flex-wrap: wrap; flex: 1; }
+  .arch-box {
+    padding: 0.5rem 1rem; border-radius: 10px; font-size: 0.8rem; font-weight: 700;
+    border: 1.5px solid;
+  }
+  .arch-arrow { text-align: center; font-size: 1.4rem; color: var(--line); line-height: 1; margin: 0.2rem 0; }
+
+  .layer-frontend { background: rgba(59,130,246,0.04); }
+  .layer-backend  { background: rgba(248,92,35,0.04); }
+  .layer-realtime { background: rgba(34,197,94,0.04); }
+  .layer-db       { background: rgba(139,92,246,0.04); }
+  .layer-auth     { background: rgba(245,158,11,0.04); }
+
+  .box-blue   { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
+  .box-orange { background: #fff7ed; border-color: #fed7aa; color: #c2410c; }
+  .box-green  { background: #f0fdf4; border-color: #bbf7d0; color: #15803d; }
+  .box-purple { background: #faf5ff; border-color: #e9d5ff; color: #7c3aed; }
+  .box-yellow { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+  .box-gray   { background: var(--bg); border-color: var(--line); color: var(--muted); }
+
+  /* ORDER FLOW */
+  .flow-row {
+    display: flex; align-items: center; gap: 0; width: 100%; justify-content: center;
+  }
+  .flow-step {
+    display: flex; flex-direction: column; align-items: center; gap: 0.4rem; padding: 0.8rem 1.2rem;
+    border-radius: 16px; min-width: 110px;
+  }
+  .flow-step-icon { font-size: 1.4rem; }
+  .flow-step-name { font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; }
+  .flow-step-role { font-size: 0.65rem; font-weight: 600; opacity: 0.6; }
+  .flow-arrow { font-size: 1.2rem; color: var(--line); padding: 0 0.2rem; flex-shrink: 0; }
+  .flow-step.pending    { background: #fffbeb; border: 1.5px solid #fde68a; }
+  .flow-step.accepted   { background: #f0fdf4; border: 1.5px solid #86efac; }
+  .flow-step.ready      { background: #eff6ff; border: 1.5px solid #93c5fd; }
+  .flow-step.assigned   { background: #fff7ed; border: 1.5px solid #fed7aa; }
+  .flow-step.transit    { background: #fdf4ff; border: 1.5px solid #d8b4fe; }
+  .flow-step.delivered  { background: #f0fdf4; border: 1.5px solid #22c55e; }
+  .flow-step.rejected   { background: #fef2f2; border: 1.5px solid #fca5a5; }
+
+  /* MODULE LIST */
+  .module-list { display: grid; gap: 0.8rem; width: 100%; }
+  .module-row {
+    display: flex; align-items: center; gap: 1.2rem; padding: 0.9rem 1.4rem;
+    background: var(--bg); border-radius: 14px; border: 1.5px solid var(--line);
+  }
+  .module-name { font-size: 0.9rem; font-weight: 800; color: var(--ink); min-width: 160px; }
+  .module-path { font-size: 0.75rem; font-weight: 600; color: var(--muted); font-family: monospace; flex: 1; }
+  .module-tags { display: flex; gap: 0.5rem; }
+
+  /* FEATURE LIST */
+  .feature-list { display: grid; gap: 0.8rem; width: 100%; }
+  .feature-row {
+    display: flex; align-items: flex-start; gap: 1.2rem; padding: 1rem 1.4rem;
+    border-radius: 14px;
+  }
+  .feature-icon { font-size: 1.5rem; flex-shrink: 0; }
+  .feature-title { font-size: 0.95rem; font-weight: 800; color: white; margin-bottom: 0.2rem; }
+  .feature-desc  { font-size: 0.8rem; color: rgba(255,255,255,0.5); line-height: 1.4; font-weight: 500; }
+
+  /* CLOSING */
+  .slide-closing { background: linear-gradient(135deg, var(--primary) 0%, #c0391a 100%); }
+  .closing-title { font-size: 4.5rem; font-weight: 900; color: white; letter-spacing: -0.05em; line-height: 1; }
+  .closing-sub   { font-size: 1.4rem; color: rgba(255,255,255,0.7); font-weight: 500; margin-top: 1rem; }
+
+  /* SLIDE CONTENT WRAPPER */
+  .slide-content { width: 100%; max-width: 1100px; }
+
+  /* KEYFRAMES */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .slide.active .slide-content,
+  .slide.active .cover-logo,
+  .slide.active .cover-title,
+  .slide.active .cover-sub,
+  .slide.active .cover-tags {
+    animation: fadeUp 0.5s ease both;
+  }
+  .slide.active .cover-sub  { animation-delay: 0.1s; }
+  .slide.active .cover-tags { animation-delay: 0.2s; }
+
+  /* KEYBOARD HINT */
+  .kbd-hint {
+    position: fixed; top: 2rem; right: 2rem;
+    font-size: 0.7rem; color: rgba(255,255,255,0.25); font-weight: 600;
+    z-index: 100;
+  }
+
+  /* REQ FUNCTIONAL GRID */
+  .req-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem; width: 100%;
+  }
+  .req-card {
+    background: var(--bg); border: 1.5px solid var(--line); border-radius: 14px;
+    padding: 0.9rem 1.2rem; display: flex; flex-direction: column; gap: 0.35rem;
+  }
+  .req-id {
+    font-size: 0.7rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--primary);
+  }
+  .req-desc { font-size: 0.82rem; color: var(--ink); font-weight: 500; line-height: 1.5; }
+
+  /* NFR CARDS */
+  .nfr-card {
+    border-radius: 16px; padding: 1rem 1.4rem;
+    border: 1.5px solid; display: flex; flex-direction: column; gap: 0.25rem;
+  }
+  .nfr-perf  { background: #eff6ff; border-color: #bfdbfe; }
+  .nfr-scale { background: #f0fdf4; border-color: #bbf7d0; }
+  .nfr-avail { background: #fef3c7; border-color: #fde68a; }
+  .nfr-ux    { background: #fdf4ff; border-color: #e9d5ff; }
+  .nfr-sec   { background: #fff7ed; border-color: #fed7aa; }
+  .nfr-header { font-size: 0.75rem; font-weight: 700; color: var(--muted); display: flex; align-items: center; gap: 0.5rem; }
+  .nfr-id    { font-size: 0.65rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.08em; color: var(--primary); }
+  .nfr-value { font-size: 1.6rem; font-weight: 900; color: var(--ink); line-height: 1.2; }
+  .nfr-detail { font-size: 0.78rem; color: var(--muted); font-weight: 500; }
+
+  /* RISK TABLE */
+  .risk-table { width: 100%; border-collapse: collapse; }
+  .risk-table th {
+    text-align: left; font-size: 0.68rem; font-weight: 800; text-transform: uppercase;
+    letter-spacing: 0.1em; color: var(--muted); padding: 0 0.8rem 0.7rem; border-bottom: 2px solid var(--line);
+  }
+  .risk-table td {
+    padding: 0.6rem 0.8rem; font-size: 0.82rem; font-weight: 500;
+    border-bottom: 1px solid var(--line); vertical-align: middle; color: var(--ink);
+  }
+  .risk-table tr:last-child td { border-bottom: none; }
+  .risk-id { font-weight: 900; color: var(--primary) !important; font-size: 0.78rem !important; }
+  .risk-badge {
+    display: inline-block; padding: 0.15rem 0.6rem; border-radius: 99px;
+    font-size: 0.68rem; font-weight: 800;
+  }
+  .risk-high { background: #fef2f2; color: #dc2626; border: 1px solid #fca5a5; }
+  .risk-med  { background: #fffbeb; color: #d97706; border: 1px solid #fde68a; }
+  .risk-low  { background: #f0fdf4; color: #16a34a; border: 1px solid #86efac; }
+
+  /* TEAM GRID */
+  .team-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.2rem; width: 100%;
+  }
+  .team-card {
+    border-radius: 18px; padding: 1.4rem 1.2rem; border: 1.5px solid;
+    display: flex; flex-direction: column; gap: 0.5rem; text-align: center;
+  }
+  .team-pm     { background: #fdf4ff; border-color: #e9d5ff; }
+  .team-dev    { background: #eff6ff; border-color: #bfdbfe; }
+  .team-qa     { background: #f0fdf4; border-color: #bbf7d0; }
+  .team-cfg    { background: #fff7ed; border-color: #fed7aa; }
+  .team-client { background: #fffbeb; border-color: #fde68a; }
+  .team-role-badge {
+    font-size: 0.65rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--primary);
+  }
+  .team-icon  { font-size: 1.8rem; }
+  .team-name  { font-size: 0.88rem; font-weight: 800; color: var(--ink); line-height: 1.3; }
+  .team-resp  { font-size: 0.75rem; color: var(--muted); font-weight: 500; line-height: 1.4; }
+
+  /* TIMELINE */
+  .timeline { display: flex; flex-direction: column; gap: 0; width: 100%; position: relative; }
+  .timeline::before {
+    content: ''; position: absolute; left: 68px; top: 12px; bottom: 12px;
+    width: 2px; background: var(--line); z-index: 0;
+  }
+  .tl-item {
+    display: flex; align-items: flex-start; gap: 1rem; padding: 0.6rem 0; position: relative;
+  }
+  .tl-phase {
+    font-size: 0.65rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--muted); min-width: 44px; padding-top: 0.2rem; text-align: right;
+  }
+  .tl-dot {
+    width: 14px; height: 14px; border-radius: 50%; background: var(--primary);
+    border: 3px solid white; box-shadow: 0 0 0 2px var(--primary);
+    flex-shrink: 0; margin-top: 0.2rem; z-index: 1;
+  }
+  .tl-dot--last { background: var(--green); box-shadow: 0 0 0 2px var(--green); }
+  .tl-body { display: flex; flex-direction: column; gap: 0.15rem; flex: 1; }
+  .tl-title { font-size: 0.95rem; font-weight: 800; color: var(--ink); }
+  .tl-date  { font-size: 0.72rem; font-weight: 700; color: var(--primary); }
+  .tl-desc  { font-size: 0.8rem; color: var(--muted); font-weight: 500; line-height: 1.4; }
+</style>
+</head>
+<body>
+
+<div id="progress"></div>
+<div class="kbd-hint">← → para navegar</div>
+
+<div class="deck" id="deck">
+
+  <!-- ══ 1. PORTADA ══ -->
+  <div class="slide slide-cover active" data-slide="0">
+    <div class="cover-logo">E4</div>
+    <h1 class="cover-title">E4 <span>Delivery</span><br>Platform</h1>
+    <p class="cover-sub">Plataforma de pedidos a domicilio · Arquitectura de Software · 2026</p>
+    <div class="cover-tags">
+      <span class="tag tag-orange">Angular 20</span>
+      <span class="tag tag-orange">Node.js + Express</span>
+      <span class="tag tag-orange">PostgreSQL</span>
+      <span class="tag tag-white">Supabase Auth</span>
+      <span class="tag tag-white">SSE Tiempo Real</span>
+      <span class="tag tag-white">Leaflet Maps</span>
+    </div>
+  </div>
+
+  <!-- ══ 2. QUÉ ES ══ -->
+  <div class="slide slide-white" data-slide="1">
+    <span class="section-label">¿Qué es?</span>
+    <div class="slide-content">
+      <h2 class="slide-title">Una plataforma <span>completa</span><br>de delivery multi-rol</h2>
+      <p class="slide-sub">Conecta clientes, restaurantes y repartidores en tiempo real.</p>
+      <div class="grid-2" style="gap:2rem;">
+        <div style="display:flex;flex-direction:column;gap:1.2rem;">
+          <div class="card">
+            <span class="card-icon">🎯</span>
+            <div class="card-title">Objetivo</div>
+            <div class="card-desc">Demostrar los principios de Arquitectura de Software aplicados: separación de capas, patrones de diseño, comunicación en tiempo real y seguridad basada en roles.</div>
+          </div>
+          <div class="card">
+            <span class="card-icon">📐</span>
+            <div class="card-title">Arquitectura</div>
+            <div class="card-desc">Monorepo con dos aplicaciones independientes: un API REST en Express/TypeScript y un SPA en Angular 20 con componentes standalone y signals.</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:1.2rem;">
+          <div class="card">
+            <span class="card-icon">👥</span>
+            <div class="card-title">Cuatro roles independientes</div>
+            <div class="card-desc">Cada rol tiene sus propias rutas, guards, vistas y permisos. Un mismo usuario solo puede tener un rol asignado.</div>
+          </div>
+          <div class="card">
+            <span class="card-icon">⚡</span>
+            <div class="card-title">Tiempo real sin WebSockets</div>
+            <div class="card-desc">Seguimiento GPS del repartidor y cambios de estado del pedido usando Server-Sent Events (SSE), ligero y sin overhead de WS.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 3. STACK TECNOLÓGICO ══ -->
+  <div class="slide slide-gray" data-slide="2">
+    <span class="section-label">Stack Tecnológico</span>
+    <div class="slide-content">
+      <h2 class="slide-title">Tecnologías <span>utilizadas</span></h2>
+      <p class="slide-sub">Seleccionadas por madurez, rendimiento y facilidad de despliegue.</p>
+      <div class="grid-2" style="gap:3rem;">
+        <div>
+          <p style="font-size:0.75rem;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:1rem;">Frontend</p>
+          <table class="stack-table">
+            <thead><tr><th>Capa</th><th>Tecnología</th></tr></thead>
+            <tbody>
+              <tr><td>Framework</td><td>Angular 20 <span class="badge badge-orange">Standalone + Signals</span></td></tr>
+              <tr><td>Mapas</td><td>Leaflet.js + OpenStreetMap + Nominatim</td></tr>
+              <tr><td>Auth cliente</td><td>Supabase JS SDK <span class="badge badge-blue">JWT</span></td></tr>
+              <tr><td>HTTP</td><td>Angular HttpClient + Interceptor</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <p style="font-size:0.75rem;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:1rem;">Backend</p>
+          <table class="stack-table">
+            <thead><tr><th>Capa</th><th>Tecnología</th></tr></thead>
+            <tbody>
+              <tr><td>Runtime</td><td>Node.js 20 LTS + TypeScript</td></tr>
+              <tr><td>Framework</td><td>Express 5 + Zod (validación)</td></tr>
+              <tr><td>Base de datos</td><td>PostgreSQL <span class="badge badge-green">via Supabase</span></td></tr>
+              <tr><td>Auth servidor</td><td>JWKS + JWT Verify <span class="badge badge-orange">sin SDK</span></td></tr>
+              <tr><td>Tiempo real</td><td>Server-Sent Events (SSE)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 4. ARQUITECTURA EN CAPAS ══ -->
+  <div class="slide slide-white" data-slide="3">
+    <span class="section-label">Arquitectura</span>
+    <div class="slide-content">
+      <h2 class="slide-title">Arquitectura en <span>capas</span></h2>
+      <p class="slide-sub">Separación clara entre presentación, lógica de negocio y persistencia.</p>
+      <div class="arch-diagram">
+
+        <div class="arch-layer layer-frontend">
+          <span class="arch-layer-label">Frontend</span>
+          <div class="arch-boxes">
+            <span class="arch-box box-blue">Pages (Angular)</span>
+            <span class="arch-box box-blue">Components</span>
+            <span class="arch-box box-blue">Guards (Roles)</span>
+            <span class="arch-box box-blue">ApiService</span>
+            <span class="arch-box box-blue">Auth Interceptor</span>
+            <span class="arch-box box-blue">SSE Client</span>
+          </div>
+        </div>
+
+        <div class="arch-arrow">↕</div>
+
+        <div class="arch-layer layer-backend">
+          <span class="arch-layer-label">Backend API</span>
+          <div class="arch-boxes">
+            <span class="arch-box box-orange">Auth Middleware</span>
+            <span class="arch-box box-orange">Require-Role</span>
+            <span class="arch-box box-orange">Orders Router</span>
+            <span class="arch-box box-orange">Deliveries Router</span>
+            <span class="arch-box box-orange">Restaurants Router</span>
+            <span class="arch-box box-orange">Admin Router</span>
+          </div>
+        </div>
+
+        <div class="arch-arrow">↕</div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;width:100%;">
+          <div class="arch-layer layer-realtime">
+            <span class="arch-layer-label">Tiempo Real</span>
+            <div class="arch-boxes">
+              <span class="arch-box box-green">SSE Broker</span>
+              <span class="arch-box box-green">Order Events</span>
+              <span class="arch-box box-green">Location Events</span>
+            </div>
+          </div>
+          <div class="arch-layer layer-auth">
+            <span class="arch-layer-label">Identidad</span>
+            <div class="arch-boxes">
+              <span class="arch-box box-yellow">Supabase Auth</span>
+              <span class="arch-box box-yellow">JWKS Verify</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="arch-arrow">↕</div>
+
+        <div class="arch-layer layer-db">
+          <span class="arch-layer-label">Datos</span>
+          <div class="arch-boxes">
+            <span class="arch-box box-purple">PostgreSQL</span>
+            <span class="arch-box box-purple">Tabla: orders</span>
+            <span class="arch-box box-purple">Tabla: deliveries</span>
+            <span class="arch-box box-purple">Tabla: products</span>
+            <span class="arch-box box-purple">Tabla: payments</span>
+            <span class="arch-box box-purple">Supabase BaaS</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 5. MÓDULOS BACKEND ══ -->
+  <div class="slide slide-gray" data-slide="4">
+    <span class="section-label">Módulos — Backend</span>
+    <div class="slide-content">
+      <h2 class="slide-title">Módulos del <span>API</span></h2>
+      <p class="slide-sub">Cada módulo encapsula sus rutas, validaciones y lógica de dominio.</p>
+      <div class="module-list">
+        <div class="module-row">
+          <span class="module-name">🔐 auth</span>
+          <span class="module-path">src/modules/auth/</span>
+          <div class="module-tags"><span class="badge badge-orange">JWT · JWKS</span></div>
+          <span style="font-size:0.82rem;color:var(--muted);font-weight:500;">Registro de perfil, obtención de perfil autenticado</span>
+        </div>
+        <div class="module-row">
+          <span class="module-name">📦 orders</span>
+          <span class="module-path">src/modules/orders/</span>
+          <div class="module-tags"><span class="badge badge-blue">State Machine</span></div>
+          <span style="font-size:0.82rem;color:var(--muted);font-weight:500;">Crear pedido, transiciones de estado, historial</span>
+        </div>
+        <div class="module-row">
+          <span class="module-name">🛵 deliveries</span>
+          <span class="module-path">src/modules/deliveries/</span>
+          <div class="module-tags"><span class="badge badge-green">GPS</span></div>
+          <span style="font-size:0.82rem;color:var(--muted);font-weight:500;">Aceptar entrega, actualizar ubicación GPS, stats del driver</span>
+        </div>
+        <div class="module-row">
+          <span class="module-name">🏪 restaurants</span>
+          <span class="module-path">src/modules/restaurants/</span>
+          <div class="module-tags"><span class="badge badge-gray">CRUD</span></div>
+          <span style="font-size:0.82rem;color:var(--muted);font-weight:500;">Listar activos, gestionar negocio propio, productos</span>
+        </div>
+        <div class="module-row">
+          <span class="module-name">⚡ events</span>
+          <span class="module-path">src/modules/events/ · src/realtime/</span>
+          <div class="module-tags"><span class="badge badge-orange">SSE</span></div>
+          <span style="font-size:0.82rem;color:var(--muted);font-weight:500;">Streams SSE de estado del pedido y ubicación del driver</span>
+        </div>
+        <div class="module-row">
+          <span class="module-name">🛡️ admin</span>
+          <span class="module-path">src/modules/admin/</span>
+          <div class="module-tags"><span class="badge badge-gray">Role: admin</span></div>
+          <span style="font-size:0.82rem;color:var(--muted);font-weight:500;">Métricas globales, gestión de usuarios e incidentes</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 6. MÓDULOS FRONTEND ══ -->
+  <div class="slide slide-white" data-slide="5">
+    <span class="section-label">Módulos — Frontend</span>
+    <div class="slide-content">
+      <h2 class="slide-title">Estructura del <span>Frontend</span></h2>
+      <p class="slide-sub">Angular 20 · Standalone components · Signals · Role-based routing</p>
+      <div class="grid-2" style="gap:2rem;">
+        <div style="display:flex;flex-direction:column;gap:1rem;">
+          <div class="card">
+            <div style="display:flex;align-items:center;gap:0.8rem;">
+              <span style="font-size:1.4rem;">📄</span>
+              <div class="card-title">pages/</div>
+              <span class="badge badge-blue">8 páginas</span>
+            </div>
+            <div class="card-desc">
+              client-dashboard, client-checkout, client-orders, client-shop<br>
+              restaurant-dashboard · driver-dashboard<br>
+              admin-dashboard · login · profile
+            </div>
+          </div>
+          <div class="card">
+            <div style="display:flex;align-items:center;gap:0.8rem;">
+              <span style="font-size:1.4rem;">🗺️</span>
+              <div class="card-title">components/</div>
+            </div>
+            <div class="card-desc">
+              <strong>OrderMapComponent</strong> — mapa en tiempo real con SSE<br>
+              <strong>LocationPickerComponent</strong> — geocodificación + Nominatim
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:1rem;">
+          <div class="card">
+            <div style="display:flex;align-items:center;gap:0.8rem;">
+              <span style="font-size:1.4rem;">⚙️</span>
+              <div class="card-title">core/</div>
+            </div>
+            <div class="card-desc">
+              <strong>ApiService</strong> — llamadas HTTP tipadas<br>
+              <strong>SessionService</strong> — sesión Supabase Auth<br>
+              <strong>ProfileService</strong> — perfil + rol del usuario<br>
+              <strong>ClientOrderStateService</strong> — carrito persistente
+            </div>
+          </div>
+          <div class="card">
+            <div style="display:flex;align-items:center;gap:0.8rem;">
+              <span style="font-size:1.4rem;">🔒</span>
+              <div class="card-title">guards + interceptors</div>
+            </div>
+            <div class="card-desc">
+              <strong>RoleGuard</strong> — protege rutas por rol (client, restaurant, driver, admin)<br>
+              <strong>AuthInterceptor</strong> — adjunta JWT a cada petición HTTP
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 7. ROLES ══ -->
+  <div class="slide slide-gray" data-slide="6">
+    <span class="section-label">Roles y Capacidades</span>
+    <div class="slide-content">
+      <h2 class="slide-title">Cuatro roles <span>independientes</span></h2>
+      <p class="slide-sub">Rutas, guards y vistas completamente separadas por rol.</p>
+      <div class="grid-4">
+        <div class="role-card role-client">
+          <span class="role-icon">🧑‍💻</span>
+          <div class="role-name">Cliente</div>
+          <ul class="role-items">
+            <li>Explorar restaurantes</li>
+            <li>Agregar al carrito</li>
+            <li>Checkout con mapa</li>
+            <li>Seguir pedido en vivo</li>
+            <li>Ver historial</li>
+          </ul>
+        </div>
+        <div class="role-card role-restaurant">
+          <span class="role-icon">🏪</span>
+          <div class="role-name">Restaurante</div>
+          <ul class="role-items">
+            <li>Configurar negocio</li>
+            <li>Gestionar menú</li>
+            <li>Aceptar/rechazar pedidos</li>
+            <li>Marcar listo para pickup</li>
+            <li>Ver métricas del día</li>
+          </ul>
+        </div>
+        <div class="role-card role-driver">
+          <span class="role-icon">🛵</span>
+          <div class="role-name">Repartidor</div>
+          <ul class="role-items">
+            <li>Ver pedidos disponibles</li>
+            <li>Aceptar entrega</li>
+            <li>Transmitir GPS en vivo</li>
+            <li>Confirmar entrega</li>
+            <li>Historial + stats</li>
+          </ul>
+        </div>
+        <div class="role-card role-admin">
+          <span class="role-icon">🛡️</span>
+          <div class="role-name">Admin</div>
+          <ul class="role-items">
+            <li>Dashboard global</li>
+            <li>Métricas de plataforma</li>
+            <li>Gestionar usuarios</li>
+            <li>Gestionar incidentes</li>
+            <li>Acceso total</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 8. FLUJO DE PEDIDO ══ -->
+  <div class="slide slide-white" data-slide="7">
+    <span class="section-label">State Machine</span>
+    <div class="slide-content">
+      <h2 class="slide-title">Flujo de estados de un <span>pedido</span></h2>
+      <p class="slide-sub">State machine controlada en el backend — cada transición valida rol y estado actual.</p>
+
+      <div class="flow-row" style="margin-bottom:1.5rem;">
+        <div class="flow-step pending">
+          <span class="flow-step-icon">🕐</span>
+          <span class="flow-step-name">PENDING</span>
+          <span class="flow-step-role">cliente</span>
+        </div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-step accepted">
+          <span class="flow-step-icon">✅</span>
+          <span class="flow-step-name">ACCEPTED</span>
+          <span class="flow-step-role">restaurante</span>
+        </div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-step ready">
+          <span class="flow-step-icon">🍽️</span>
+          <span class="flow-step-name">READY</span>
+          <span class="flow-step-role">restaurante</span>
+        </div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-step assigned">
+          <span class="flow-step-icon">🛵</span>
+          <span class="flow-step-name">ASSIGNED</span>
+          <span class="flow-step-role">repartidor</span>
+        </div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-step transit">
+          <span class="flow-step-icon">📍</span>
+          <span class="flow-step-name">IN_TRANSIT</span>
+          <span class="flow-step-role">repartidor</span>
+        </div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-step delivered">
+          <span class="flow-step-icon">🎉</span>
+          <span class="flow-step-name">DELIVERED</span>
+          <span class="flow-step-role">repartidor</span>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:3rem;margin-top:1rem;">
+        <div style="display:flex;align-items:center;gap:0.8rem;">
+          <div class="flow-step rejected" style="min-width:auto;padding:0.5rem 1rem;">
+            <span class="flow-step-name">REJECTED</span>
+          </div>
+          <span style="font-size:0.8rem;color:var(--muted);font-weight:600;">← desde PENDING (restaurante)</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:0.8rem;">
+          <div class="flow-step rejected" style="min-width:auto;padding:0.5rem 1rem;">
+            <span class="flow-step-name">CANCELLED</span>
+          </div>
+          <span style="font-size:0.8rem;color:var(--muted);font-weight:600;">← PENDING o ACCEPTED (cliente)</span>
+        </div>
+      </div>
+
+      <div style="margin-top:2rem;padding:1.2rem 1.8rem;background:var(--bg);border-radius:16px;border:1.5px solid var(--line);">
+        <p style="font-size:0.85rem;font-weight:600;color:var(--muted);">
+          Cada cambio de estado publica un evento SSE → el cliente recibe la actualización en tiempo real sin polling.
+          Al cancelar, el pago pasa automáticamente a <strong>SIMULATED_REFUNDED</strong>.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 9. TIEMPO REAL ══ -->
+  <div class="slide slide-dark" data-slide="8">
+    <span class="section-label dark">Tiempo Real</span>
+    <div class="slide-content">
+      <h2 class="slide-title white">Server-Sent <span>Events</span></h2>
+      <p class="slide-sub white">Una sola conexión HTTP unidireccional — sin overhead de WebSockets.</p>
+      <div class="grid-2" style="gap:2rem;">
+        <div style="display:flex;flex-direction:column;gap:1.2rem;">
+          <div class="card dark">
+            <span class="card-icon">📡</span>
+            <div class="card-title white">GET /events/orders/:id</div>
+            <div class="card-desc white">Stream SSE de cambios de estado. El cliente se suscribe al crear un pedido y recibe eventos cuando el restaurante o repartidor actualizan el estado.</div>
+          </div>
+          <div class="card dark">
+            <span class="card-icon">📍</span>
+            <div class="card-title white">GET /events/orders/:id/location</div>
+            <div class="card-desc white">Stream SSE de coordenadas GPS. El repartidor publica su ubicación cada segundo — el mapa del cliente actualiza el pin en tiempo real.</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:1rem;justify-content:center;">
+          <div style="background:rgba(255,255,255,0.04);border:1.5px solid rgba(255,255,255,0.1);border-radius:18px;padding:1.5rem;font-family:monospace;font-size:0.8rem;color:rgba(255,255,255,0.7);line-height:1.8;">
+            <span style="color:var(--green);">event:</span> order_status_changed<br>
+            <span style="color:var(--green);">data:</span> {"status":"ACCEPTED","orderId":42}<br><br>
+            <span style="color:var(--green);">event:</span> location_update<br>
+            <span style="color:var(--green);">data:</span> {"lat":20.659,"lng":-103.349}<br><br>
+            <span style="color:var(--green);">event:</span> order_status_changed<br>
+            <span style="color:var(--green);">data:</span> {"status":"DELIVERED","orderId":42}
+          </div>
+          <div style="display:flex;flex-direction:column;gap:0.6rem;margin-top:0.5rem;">
+            <div style="display:flex;align-items:center;gap:0.8rem;">
+              <span style="width:8px;height:8px;background:var(--green);border-radius:50%;box-shadow:0 0 8px var(--green);flex-shrink:0;"></span>
+              <span style="font-size:0.82rem;color:rgba(255,255,255,0.55);font-weight:600;">SSE Broker almacena suscripciones en memoria</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:0.8rem;">
+              <span style="width:8px;height:8px;background:var(--primary);border-radius:50%;box-shadow:0 0 8px var(--primary);flex-shrink:0;"></span>
+              <span style="font-size:0.82rem;color:rgba(255,255,255,0.55);font-weight:600;">Reconexión automática del browser (EventSource API)</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:0.8rem;">
+              <span style="width:8px;height:8px;background:var(--blue);border-radius:50%;box-shadow:0 0 8px var(--blue);flex-shrink:0;"></span>
+              <span style="font-size:0.82rem;color:rgba(255,255,255,0.55);font-weight:600;">JWT del cliente valida acceso al stream</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 10. BASE DE DATOS ══ -->
+  <div class="slide slide-gray" data-slide="9">
+    <span class="section-label">Base de Datos</span>
+    <div class="slide-content">
+      <h2 class="slide-title">Modelo de <span>datos</span></h2>
+      <p class="slide-sub">PostgreSQL vía Supabase · 10 tablas · Triggers automáticos</p>
+      <div class="grid-2" style="gap:3rem;">
+        <div>
+          <p style="font-size:0.75rem;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);margin-bottom:1rem;">Tablas principales</p>
+          <table class="stack-table">
+            <tbody>
+              <tr><td>users</td><td>Perfil extendido, rol, coordenadas</td></tr>
+              <tr><td>restaurants</td><td>Negocio, dirección, lat/lng, is_open</td></tr>
+              <tr><td>products</td><td>Platillos, precio, categoría, disponibilidad</td></tr>
+              <tr><td>orders</td><td>Pedido completo, status, totales, coordenadas</td></tr>
+              <tr><td>order_items</td><td>Líneas de detalle con precio unitario</td></tr>
+              <tr><td>deliveries</td><td>Asignación driver, coordenadas GPS en vivo</td></tr>
+              <tr><td>payments</td><td>Método, monto, estado (simulado)</td></tr>
+              <tr><td>order_status_history</td><td>Auditoría completa de transiciones</td></tr>
+              <tr><td>incidents</td><td>Reportes de incidentes con resolución</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:1rem;">
+          <div class="card">
+            <span class="card-icon">🔄</span>
+            <div class="card-title">Trigger: updated_at</div>
+            <div class="card-desc">Actualización automática del timestamp en todas las tablas mediante función `set_updated_at()` en PostgreSQL.</div>
+          </div>
+          <div class="card">
+            <span class="card-icon">🔐</span>
+            <div class="card-title">Auth sin RLS</div>
+            <div class="card-desc">Supabase solo gestiona identidad (JWT). El control de acceso se implementa en el API con middlewares de rol — sin Row Level Security para mayor control explícito.</div>
+          </div>
+          <div class="card">
+            <span class="card-icon">💾</span>
+            <div class="card-title">Backup completo</div>
+            <div class="card-desc">DB_Backup/ incluye schema completo, 5 migraciones numeradas y seed con 6 restaurantes de prueba.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 11. FUNCIONALIDADES DESTACADAS ══ -->
+  <div class="slide slide-dark" data-slide="10">
+    <span class="section-label dark">Funcionalidades</span>
+    <div class="slide-content">
+      <h2 class="slide-title white">Características <span>destacadas</span></h2>
+      <p class="slide-sub white">Implementaciones no triviales del proyecto.</p>
+      <div class="grid-2" style="gap:1.2rem;">
+        <div class="feature-row" style="background:rgba(59,130,246,0.08);border-radius:16px;border:1px solid rgba(59,130,246,0.2);">
+          <span class="feature-icon">🗺️</span>
+          <div>
+            <div class="feature-title">Mapa en tiempo real</div>
+            <div class="feature-desc">Leaflet.js con SSE — el pin del repartidor se mueve en el mapa del cliente sin ningún polling.</div>
+          </div>
+        </div>
+        <div class="feature-row" style="background:rgba(34,197,94,0.08);border-radius:16px;border:1px solid rgba(34,197,94,0.2);">
+          <span class="feature-icon">📍</span>
+          <div>
+            <div class="feature-title">Geocodificación bidireccional</div>
+            <div class="feature-desc">Nominatim: dirección → coordenadas al buscar, y coordenadas → dirección al mover el pin en el mapa.</div>
+          </div>
+        </div>
+        <div class="feature-row" style="background:rgba(248,92,35,0.08);border-radius:16px;border:1px solid rgba(248,92,35,0.2);">
+          <span class="feature-icon">🔒</span>
+          <div>
+            <div class="feature-title">Auth sin SDK de Supabase en el API</div>
+            <div class="feature-desc">El backend verifica JWTs directamente vía JWKS — sin dependencia del SDK de Supabase, más portable y controlado.</div>
+          </div>
+        </div>
+        <div class="feature-row" style="background:rgba(139,92,246,0.08);border-radius:16px;border:1px solid rgba(139,92,246,0.2);">
+          <span class="feature-icon">⚙️</span>
+          <div>
+            <div class="feature-title">State machine de pedidos</div>
+            <div class="feature-desc">Transiciones validadas en `domain/order-status.ts` — cada rol solo puede ejecutar las transiciones que le corresponden.</div>
+          </div>
+        </div>
+        <div class="feature-row" style="background:rgba(245,158,11,0.08);border-radius:16px;border:1px solid rgba(245,158,11,0.2);">
+          <span class="feature-icon">🛒</span>
+          <div>
+            <div class="feature-title">Carrito persistente</div>
+            <div class="feature-desc">El carrito se guarda en localStorage y se restaura al recargar la página — resistente a refreshes accidentales.</div>
+          </div>
+        </div>
+        <div class="feature-row" style="background:rgba(16,185,129,0.08);border-radius:16px;border:1px solid rgba(16,185,129,0.2);">
+          <span class="feature-icon">💳</span>
+          <div>
+            <div class="feature-title">Pagos + reembolsos simulados</div>
+            <div class="feature-desc">Flujo completo: pago en la creación, reembolso automático al cancelar (SIMULATED_REFUNDED), todo en la misma transacción de BD.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 12. REQUISITOS FUNCIONALES ══ -->
+  <div class="slide slide-white" data-slide="11">
+    <span class="section-label">SRS — Requisitos Funcionales</span>
+    <div class="slide-content">
+      <h2 class="slide-title">Requisitos <span>funcionales</span> clave</h2>
+      <p class="slide-sub">Selección del SRS · Equipo 4 · 22 requisitos funcionales documentados</p>
+      <div class="req-grid">
+        <div class="req-card">
+          <span class="req-id">REQ-SRS-01</span>
+          <div class="req-desc">Menús dinámicos — el restaurante actualiza platillos; los clientes ven disponibilidad al instante sin recargar.</div>
+        </div>
+        <div class="req-card">
+          <span class="req-id">REQ-SRS-02</span>
+          <div class="req-desc">Seguimiento en tiempo real — cambios de estado del pedido y ubicación GPS del repartidor vía SSE.</div>
+        </div>
+        <div class="req-card">
+          <span class="req-id">REQ-SRS-03</span>
+          <div class="req-desc">Geolocalización — el cliente selecciona dirección de entrega en mapa; el sistema geocodifica con Nominatim.</div>
+        </div>
+        <div class="req-card">
+          <span class="req-id">REQ-SRS-04</span>
+          <div class="req-desc">Actualizaciones del repartidor — el driver transmite coordenadas GPS en tiempo real durante cada entrega activa.</div>
+        </div>
+        <div class="req-card">
+          <span class="req-id">REQ-SRS-08</span>
+          <div class="req-desc">RBAC — control de acceso basado en roles; cliente, restaurante, repartidor y admin acceden solo a sus funciones.</div>
+        </div>
+        <div class="req-card">
+          <span class="req-id">REQ-SRS-14</span>
+          <div class="req-desc">Carrito persistente — el carrito se guarda en localStorage entre sesiones, resistente a recargas accidentales.</div>
+        </div>
+        <div class="req-card">
+          <span class="req-id">REQ-SRS-20</span>
+          <div class="req-desc">Cancelación de pedidos — el cliente puede cancelar en PENDING o ACCEPTED; el sistema genera reembolso automático.</div>
+        </div>
+        <div class="req-card">
+          <span class="req-id">REQ-SRS-22</span>
+          <div class="req-desc">Historial de pagos — registro completo con estado (aprobado / reembolsado) asociado a cada pedido.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 13. REQUISITOS NO FUNCIONALES ══ -->
+  <div class="slide slide-gray" data-slide="12">
+    <span class="section-label">SRS — Requisitos No Funcionales</span>
+    <div class="slide-content">
+      <h2 class="slide-title">Requisitos <span>no funcionales</span></h2>
+      <p class="slide-sub">Rendimiento, disponibilidad y usabilidad definidos en el SRS · 13 NFR documentados</p>
+      <div class="grid-2" style="gap:1.8rem;">
+        <div style="display:flex;flex-direction:column;gap:1rem;">
+          <div class="nfr-card nfr-perf">
+            <div class="nfr-header"><span class="nfr-id">NFR-01</span> Tiempo de respuesta — lecturas</div>
+            <div class="nfr-value">≤ 2 s</div>
+            <div class="nfr-detail">95 % de peticiones GET bajo carga normal</div>
+          </div>
+          <div class="nfr-card nfr-perf">
+            <div class="nfr-header"><span class="nfr-id">NFR-02</span> Tiempo de respuesta — escrituras</div>
+            <div class="nfr-value">≤ 3 s</div>
+            <div class="nfr-detail">95 % de peticiones POST/PATCH bajo carga normal</div>
+          </div>
+          <div class="nfr-card nfr-scale">
+            <div class="nfr-header"><span class="nfr-id">NFR-03</span> Concurrencia</div>
+            <div class="nfr-value">200 usuarios</div>
+            <div class="nfr-detail">Simultáneos sin degradación de rendimiento</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:1rem;">
+          <div class="nfr-card nfr-avail">
+            <div class="nfr-header"><span class="nfr-id">NFR-10</span> Disponibilidad</div>
+            <div class="nfr-value">99 %</div>
+            <div class="nfr-detail">Uptime mensual garantizado en producción</div>
+          </div>
+          <div class="nfr-card nfr-ux">
+            <div class="nfr-header"><span class="nfr-id">NFR-12</span> Usabilidad</div>
+            <div class="nfr-value">≤ 5 clics</div>
+            <div class="nfr-detail">Para completar cualquier flujo principal (pedido, aceptación, entrega)</div>
+          </div>
+          <div class="nfr-card nfr-sec">
+            <div class="nfr-header"><span class="nfr-id">NFR-05</span> Seguridad</div>
+            <div class="nfr-value">JWT + RBAC</div>
+            <div class="nfr-detail">Autenticación sin estado, control por rol en cada endpoint</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 14. GESTIÓN DE RIESGOS ══ -->
+  <div class="slide slide-white" data-slide="13">
+    <span class="section-label">SRS — Riesgos</span>
+    <div class="slide-content">
+      <h2 class="slide-title">Gestión de <span>riesgos</span></h2>
+      <p class="slide-sub">Matriz de riesgos identificados en el SRS · R01–R07</p>
+      <table class="risk-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Riesgo</th>
+            <th>Prob.</th>
+            <th>Impacto</th>
+            <th>Mitigación</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="risk-id">R01</td>
+            <td>Pérdida de conexión SSE</td>
+            <td><span class="risk-badge risk-med">Media</span></td>
+            <td><span class="risk-badge risk-high">Alto</span></td>
+            <td>Reconexión automática via EventSource; fallback a polling</td>
+          </tr>
+          <tr>
+            <td class="risk-id">R02</td>
+            <td>Sobrecarga del servidor de BD</td>
+            <td><span class="risk-badge risk-low">Baja</span></td>
+            <td><span class="risk-badge risk-high">Alto</span></td>
+            <td>Pool de conexiones pg, índices en columnas de búsqueda frecuente</td>
+          </tr>
+          <tr>
+            <td class="risk-id">R03</td>
+            <td>Token JWT expirado / inválido</td>
+            <td><span class="risk-badge risk-med">Media</span></td>
+            <td><span class="risk-badge risk-med">Medio</span></td>
+            <td>Interceptor Angular renueva sesión antes de expirar; 401 redirige a login</td>
+          </tr>
+          <tr>
+            <td class="risk-id">R04</td>
+            <td>GPS del repartidor impreciso</td>
+            <td><span class="risk-badge risk-med">Media</span></td>
+            <td><span class="risk-badge risk-low">Bajo</span></td>
+            <td>Se almacena y muestra el campo accuracy; umbral de precisión en UI</td>
+          </tr>
+          <tr>
+            <td class="risk-id">R05</td>
+            <td>Falla en geocodificación Nominatim</td>
+            <td><span class="risk-badge risk-low">Baja</span></td>
+            <td><span class="risk-badge risk-med">Medio</span></td>
+            <td>Input manual de dirección como fallback; validación mínima de longitud</td>
+          </tr>
+          <tr>
+            <td class="risk-id">R06</td>
+            <td>Cambio de estado concurrente</td>
+            <td><span class="risk-badge risk-low">Baja</span></td>
+            <td><span class="risk-badge risk-high">Alto</span></td>
+            <td>Transacciones de BD + state machine validan transición antes de escribir</td>
+          </tr>
+          <tr>
+            <td class="risk-id">R07</td>
+            <td>Límite de presupuesto Azure ($100)</td>
+            <td><span class="risk-badge risk-med">Media</span></td>
+            <td><span class="risk-badge risk-med">Medio</span></td>
+            <td>Supabase free tier para BD; Azure reservado para despliegue final</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══ 15. EQUIPO ══ -->
+  <div class="slide slide-gray" data-slide="14">
+    <span class="section-label">SPMP — Equipo</span>
+    <div class="slide-content">
+      <h2 class="slide-title">Equipo del <span>proyecto</span></h2>
+      <p class="slide-sub">Organización según el SPMP · Modelo iterativo-incremental (Scrum)</p>
+      <div class="team-grid">
+        <div class="team-card team-pm">
+          <div class="team-role-badge">Project Manager</div>
+          <div class="team-icon">👤</div>
+          <div class="team-name">Aldo Velázquez</div>
+          <div class="team-resp">Planificación, sprints, coordinación de entregables y relación con el cliente</div>
+        </div>
+        <div class="team-card team-dev">
+          <div class="team-role-badge">Desarrollador</div>
+          <div class="team-icon">💻</div>
+          <div class="team-name">Alan Varela</div>
+          <div class="team-resp">Arquitectura, backend API, frontend Angular, integración SSE y mapas</div>
+        </div>
+        <div class="team-card team-dev">
+          <div class="team-role-badge">Desarrollador</div>
+          <div class="team-icon">💻</div>
+          <div class="team-name">Emmanuel Pulido</div>
+          <div class="team-resp">Desarrollo full-stack, módulos de restaurante y repartidor</div>
+        </div>
+        <div class="team-card team-qa">
+          <div class="team-role-badge">QA</div>
+          <div class="team-icon">🧪</div>
+          <div class="team-name">Benjamín Rodríguez</div>
+          <div class="team-resp">Pruebas de integración, validación de requisitos, reporte de defectos</div>
+        </div>
+        <div class="team-card team-cfg">
+          <div class="team-role-badge">Config Manager</div>
+          <div class="team-icon">⚙️</div>
+          <div class="team-name">Luis Fernández</div>
+          <div class="team-resp">Control de versiones, gestión de ramas, despliegue en Azure</div>
+        </div>
+        <div class="team-card team-client">
+          <div class="team-role-badge">Cliente / Stakeholder</div>
+          <div class="team-icon">🏢</div>
+          <div class="team-name">David Emmanuel Ramírez Tovar</div>
+          <div class="team-resp">Validación de requisitos y revisión de entregables en cada fase</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 16. CRONOGRAMA ══ -->
+  <div class="slide slide-white" data-slide="15">
+    <span class="section-label">SPMP — Cronograma</span>
+    <div class="slide-content">
+      <h2 class="slide-title">Cronograma del <span>proyecto</span></h2>
+      <p class="slide-sub">5 fases · 9 de marzo – 13 de mayo de 2026 · Presupuesto: $100 USD (Azure)</p>
+      <div class="timeline">
+        <div class="tl-item">
+          <div class="tl-phase">Fase 1</div>
+          <div class="tl-dot"></div>
+          <div class="tl-body">
+            <div class="tl-title">Inicio y Planificación</div>
+            <div class="tl-date">9 mar – 16 mar</div>
+            <div class="tl-desc">Definición de alcance, elaboración de SRS y SPMP, configuración del monorepo y repositorio</div>
+          </div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-phase">Fase 2</div>
+          <div class="tl-dot"></div>
+          <div class="tl-body">
+            <div class="tl-title">Diseño y Arquitectura</div>
+            <div class="tl-date">17 mar – 31 mar</div>
+            <div class="tl-desc">Diseño de base de datos, definición de API REST, wireframes, configuración de Supabase y migraciones</div>
+          </div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-phase">Fase 3</div>
+          <div class="tl-dot"></div>
+          <div class="tl-body">
+            <div class="tl-title">Implementación</div>
+            <div class="tl-date">1 abr – 28 abr</div>
+            <div class="tl-desc">Desarrollo de todos los módulos backend y frontend, SSE, mapas Leaflet, RBAC y state machine de pedidos</div>
+          </div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-phase">Fase 4</div>
+          <div class="tl-dot"></div>
+          <div class="tl-body">
+            <div class="tl-title">Pruebas e Integración</div>
+            <div class="tl-date">29 abr – 7 may</div>
+            <div class="tl-desc">Pruebas de integración y usabilidad, corrección de defectos, validación de NFR de rendimiento</div>
+          </div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-phase">Fase 5</div>
+          <div class="tl-dot tl-dot--last"></div>
+          <div class="tl-body">
+            <div class="tl-title">Entrega Final</div>
+            <div class="tl-date">8 may – 13 may</div>
+            <div class="tl-desc">Despliegue en Azure, presentación final ante el cliente, documentación completa y cierre del proyecto</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ 17. CIERRE ══ -->
+  <div class="slide slide-closing" data-slide="16">
+    <h2 class="closing-title">E4 Delivery<br>Platform</h2>
+    <p class="closing-sub">Arquitectura de Software · ITESO · 2026</p>
+    <div style="display:flex;gap:3rem;margin-top:3rem;flex-wrap:wrap;justify-content:center;">
+      <div style="text-align:center;">
+        <div style="font-size:2.5rem;font-weight:900;color:white;">4</div>
+        <div style="font-size:0.8rem;color:rgba(255,255,255,0.6);font-weight:700;text-transform:uppercase;">Roles</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:2.5rem;font-weight:900;color:white;">2</div>
+        <div style="font-size:0.8rem;color:rgba(255,255,255,0.6);font-weight:700;text-transform:uppercase;">Apps</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:2.5rem;font-weight:900;color:white;">8</div>
+        <div style="font-size:0.8rem;color:rgba(255,255,255,0.6);font-weight:700;text-transform:uppercase;">Módulos API</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:2.5rem;font-weight:900;color:white;">9</div>
+        <div style="font-size:0.8rem;color:rgba(255,255,255,0.6);font-weight:700;text-transform:uppercase;">Tablas BD</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:2.5rem;font-weight:900;color:white;">SSE</div>
+        <div style="font-size:0.8rem;color:rgba(255,255,255,0.6);font-weight:700;text-transform:uppercase;">Tiempo Real</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── NAVIGATION ── -->
+<div class="nav">
+  <button id="btn-prev" disabled>←</button>
+  <span id="slide-count">1 / 17</span>
+  <button id="btn-next">→</button>
+</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const total  = slides.length;
+  let current  = 0;
+
+  const progress  = document.getElementById('progress');
+  const counter   = document.getElementById('slide-count');
+  const btnPrev   = document.getElementById('btn-prev');
+  const btnNext   = document.getElementById('btn-next');
+
+  function goTo(n) {
+    slides[current].classList.remove('active');
+    current = Math.max(0, Math.min(n, total - 1));
+    slides[current].classList.add('active');
+
+    progress.style.width = ((current + 1) / total * 100) + '%';
+    counter.textContent  = (current + 1) + ' / ' + total;
+    btnPrev.disabled = current === 0;
+    btnNext.disabled = current === total - 1;
+  }
+
+  btnNext.addEventListener('click', () => goTo(current + 1));
+  btnPrev.addEventListener('click', () => goTo(current - 1));
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ') goTo(current + 1);
+    if (e.key === 'ArrowLeft')  goTo(current - 1);
+  });
+
+  goTo(0);
+</script>
+</body>
+</html>
